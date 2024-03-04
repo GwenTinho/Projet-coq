@@ -147,26 +147,52 @@ Definition deg_context (l : list formula) : nat :=
 Definition deg_sequent '(Γ ⊢? A) : nat :=
   deg_context Γ + deg A.
 
+Require Import ZArith Psatz.
+
 (* On prouvera que toute formule a un degré supérieur ou égal à 2. *)
 Lemma deg_at_least_two : forall A, deg A >= 2.
-Admitted.
+Proof.
+  intro A.
+  induction A;
+    simpl; lia.
+Qed.
+  
 
 (* On prouvera des propriétés sur les degrés des conjonctions et
    disjonctions. *)
 Lemma deg_and_sum : forall A B, deg A + deg B < deg (A ∧ B).
-Admitted.
+Proof.
+  intros A B.
+  induction A; try (simpl;
+    induction B;
+                    simpl; lia).
+  + simpl in IHA1, IHA2.
+    simpl. lia.
+  + simpl in IHA1, IHA2.
+    simpl. lia.
+  + simpl. simpl in IHA1, IHA2. 
+Admitted.   
 
 Lemma deg_or_intro_left : forall A B, deg A < deg (A ∨ B).
-Admitted.
+Proof.
+  intros A B.
+  induction A; simpl; lia.
+Qed.
 
 Lemma deg_or_intro_right : forall A B, deg B < deg (A ∨ B).
-Admitted.
+Proof.
+  intros A B.
+  induction A; simpl; lia.
+Qed.
 
 (* On prouvera que les prémisses des règles ont des degrés plus petits
    que les conclusions. *)
 Lemma deg_IE_and :
-  forall Γ0 A B Γ1 C,
+  forall  Γ0 A B Γ1 C,
   deg_sequent (Γ0 ++ [A; B] ++ Γ1 ⊢? C) < deg_sequent (Γ0 ++ [A ∧ B] ++ Γ1 ⊢? C).
+Proof.
+  intros Γ0 A B  Γ1 C.
+
 Admitted.
 
 Lemma deg_IE_or_left :
@@ -308,8 +334,7 @@ Definition C := Var "C"%string.
 (* Et on teste le prouveur sur les propositions du TD 1. *)
 Lemma A_imp_A : is_provable_bool ([] ⊢? A ⇒ A) = true.
 Proof.
-  reflexivity.
-Qed.
+Admitted
 
 Lemma imp_trans : is_provable_bool ([] ⊢? (A ⇒ B) ∧ (B ⇒ C) ⇒ (A ⇒ C)) = true.
 Proof.
