@@ -170,8 +170,24 @@ Proof.
     simpl. lia.
   + simpl in IHA1, IHA2.
     simpl. lia.
-  + simpl. simpl in IHA1, IHA2. 
-Admitted.   
+  + simpl. simpl in IHA1, IHA2.
+    Search (?k + ?n < ?k  + ?m).
+    apply Arith_prebase.lt_n_S_stt.
+    Search (?a + ?b = ?b + ?a).
+    rewrite Nat.add_comm.
+    apply Nat.add_lt_mono_l.
+    Search (?a * ?m < ?a * ?n).
+    Search ((?n * ?m) * ?p = ?n * (?m * ?p)).
+    rewrite Arith_prebase.mult_assoc_reverse_stt.
+    apply Mult.mult_lt_compat_l_stt.
+    * Search (?a < ?a + ?b ).
+      Search (?a < ?b -> ?b < ?c -> ?a < ?c).
+      apply Nat.lt_trans with (deg A2 + deg B).
+  - apply Nat.lt_add_pos_r.
+    destruct B; lia.
+  - lia.
+    * lia.
+Qed.
 
 Lemma deg_or_intro_left : forall A B, deg A < deg (A ∨ B).
 Proof.
@@ -192,47 +208,231 @@ Lemma deg_IE_and :
   deg_sequent (Γ0 ++ [A; B] ++ Γ1 ⊢? C) < deg_sequent (Γ0 ++ [A ∧ B] ++ Γ1 ⊢? C).
 Proof.
   intros Γ0 A B  Γ1 C.
-
-Admitted.
+  induction Γ0.
+  - simpl.
+    induction  Γ1.
+    + simpl.
+      apply Nat.add_lt_mono_r.
+      unfold deg_context.
+      specialize (deg_and_sum A B) as G.
+      simpl in G.
+      simpl.
+      lia.
+    + apply Nat.add_lt_mono_r.
+      unfold deg_context.
+      simpl.
+      specialize (deg_and_sum A B) as G.
+      simpl in G.
+      lia.
+  - simpl.
+    simpl in IHΓ0.
+    unfold deg_context.
+    simpl.
+    unfold deg_context in IHΓ0.
+    simpl in IHΓ0.
+    lia.
+Qed.
 
 Lemma deg_IE_or_left :
   forall Γ0 A B Γ1 C,
   deg_sequent (Γ0 ++ [A] ++ Γ1 ⊢? C) < deg_sequent (Γ0 ++ [A ∨ B] ++ Γ1 ⊢? C).
-Admitted.
-
+Proof.
+  intros Γ0 A B Γ1 C.
+  induction  Γ0.
+  + simpl.
+    unfold deg_context.
+    simpl.
+    specialize (deg_or_intro_left A B) as H.
+    simpl in H.
+    lia.
+  + specialize (deg_or_intro_left A B) as H. simpl in H.
+    unfold deg_sequent, deg_context.
+    unfold deg_sequent, deg_context in IHΓ0.
+    simpl.
+    simpl in IHΓ0.
+    lia.
+Qed.
+    
 Lemma deg_IE_or_right :
   forall Γ0 A B Γ1 C,
   deg_sequent (Γ0 ++ [B] ++ Γ1 ⊢? C) < deg_sequent (Γ0 ++ [A ∨ B] ++ Γ1 ⊢? C).
-Admitted.
+Proof.
+  intros Γ0 A B Γ1 C.
+  induction  Γ0.
+  + simpl.
+    unfold deg_context.
+    simpl.
+    specialize (deg_or_intro_left A B) as H.
+    simpl in H.
+    lia.
+  + specialize (deg_or_intro_left A B) as H. simpl in H.
+    unfold deg_sequent, deg_context.
+    unfold deg_sequent, deg_context in IHΓ0.
+    simpl.
+    simpl in IHΓ0.
+    lia.
+Qed.
 
 Lemma deg_II_impl :
   forall Γ A B,
   deg_sequent (Γ ++ [A] ⊢? B) < deg_sequent (Γ ⊢? A ⇒ B).
-Admitted.
+Proof.
+  intros Γ A B.
+  induction Γ.
+  + simpl. unfold deg_context. simpl.
+    specialize (deg_at_least_two A) as HA.
+    specialize (deg_at_least_two B) as HB.
+    induction (deg A); lia.
+  + specialize (deg_at_least_two A) as HA.
+    specialize (deg_at_least_two B) as HB.
+    unfold deg_sequent,deg_context in IHΓ.
+    simpl in IHΓ.
+    unfold deg_sequent, deg_context.
+    simpl.
+    lia.
+Qed.
+    
+Lemma deg_context_app : forall Γ1 Γ2, deg_context (Γ1 ++ Γ2) = deg_context Γ1 + deg_context Γ2.
+Proof.
+  intros Γ1 Γ2.
+  unfold deg_context.
+  rewrite map_app.
+  rewrite list_sum_app.
+  reflexivity.
+Qed.
+
+Lemma deg_sequent_app : forall Γ1 Γ2 A, deg_sequent (Γ1 ++ Γ2 ⊢? A ) = deg_context Γ1 + deg_context Γ2 + deg A.
+Proof.
+  intros Γ1 Γ2 A.
+  simpl.
+  rewrite deg_context_app.
+  reflexivity.
+Qed.
+
+Lemma deg_context_element : forall A, deg_context [A] = deg A.
+Proof.
+  intro A.
+  unfold deg_context.
+  simpl.
+  lia.
+Qed.
+
+Lemma deg_context_cons : forall A B, deg_context [A;B] = deg A + deg B.
+Proof.
+  intros A B.
+  unfold deg_context.
+  simpl.
+  lia.
+Qed.
 
 Lemma deg_IE_impl_left :
   forall Γ A Γ' B Γ'' C,
   deg_sequent (Γ ++ [A] ++ Γ' ++ [B] ++ Γ'' ⊢? C) <
     deg_sequent (Γ ++ [A] ++ Γ' ++ [A ⇒ B] ++ Γ'' ⊢? C).
-Admitted.
+Proof.
+  intros Γ A Γ' B Γ'' C.
+  induction Γ'.
+  + simpl.
+    specialize (deg_II_impl Γ A B) as H.
+    induction Γ''.
+  -
+    repeat rewrite deg_sequent_app.
+    simpl.
+    repeat rewrite deg_sequent_app in H.
+    simpl in H.
+    repeat rewrite deg_context_app.
+    repeat rewrite deg_context_cons.
+    simpl.
+    lia.
+  - repeat rewrite deg_sequent_app in *.
+    repeat rewrite deg_context_app in *.
+    simpl in *.
+    unfold deg_context in *. simpl in *.
+    lia.
+    + repeat rewrite deg_sequent_app in *.
+      repeat rewrite deg_context_app in *.
+      unfold deg_context in *. simpl in *. lia.
+Qed.
 
 Lemma deg_IE_impl_right :
   forall Γ A Γ' B Γ'' C,
   deg_sequent (Γ ++ [B] ++ Γ' ++ [A] ++ Γ'' ⊢? C) <
     deg_sequent (Γ ++ [A ⇒ B] ++ Γ' ++ [A] ++ Γ'' ⊢? C).
-Admitted.
+Proof.
+    intros Γ A Γ' B Γ'' C.
+  induction Γ'.
+  + simpl.
+    specialize (deg_II_impl Γ A B) as H.
+    induction Γ''.
+  -
+    repeat rewrite deg_sequent_app.
+    simpl.
+    repeat rewrite deg_sequent_app in H.
+    simpl in H.
+    repeat rewrite deg_context_app.
+    repeat rewrite deg_context_cons.
+    simpl.
+    lia.
+  - repeat rewrite deg_sequent_app in *.
+    repeat rewrite deg_context_app in *.
+    simpl in *.
+    unfold deg_context in *. simpl in *.
+    lia.
+    + repeat rewrite deg_sequent_app in *.
+      repeat rewrite deg_context_app in *.
+      unfold deg_context in *. simpl in *. lia.
+Qed.
 
 Lemma deg_IE_impl_top :
   forall Γ A Γ' B,
   deg_sequent (Γ ++ [A] ++ Γ' ⊢? B) <
     deg_sequent (Γ ++ [⊤ ⇒ A] ++ Γ' ⊢? B).
-Admitted.
+Proof.
+  intros Γ A Γ' B.
+  induction Γ'.
+  + repeat rewrite deg_sequent_app.
+    unfold deg_context. simpl.
+    lia.
+  + repeat rewrite deg_sequent_app in *.
+    unfold deg_context in *. simpl in *.
+    lia.
+Qed.
 
 Lemma deg_IE_impl_and :
   forall Γ A B C Γ' D,
   deg_sequent (Γ ++ [A ⇒ B ⇒ C] ++ Γ' ⊢? D) <
     deg_sequent (Γ ++ [A ∧ B ⇒ C] ++ Γ' ⊢? D).
-Admitted.
+Proof.
+  intros Γ A B C Γ' D.
+  induction Γ'.
+  + 
+    repeat rewrite deg_sequent_app.
+    unfold deg_context.
+    simpl.
+    Search ((?a * ?b) * ?c).
+    apply Plus.plus_lt_compat_r_stt.
+    apply Plus.plus_lt_compat_l_stt.
+    specialize (deg_at_least_two A) as HA.
+    Search (S ?a < S ?b).
+    apply Arith_prebase.lt_n_S_stt.
+    Search (?a + 0).
+    repeat rewrite Nat.add_0_r.
+    rewrite <- Nat.mul_assoc.
+    Search (?a * ?b < ?a * ?c).
+    apply Mult.mult_lt_compat_l_stt.
+    * simpl.
+      induction C; simpl; try lia.
+    * lia.
+  + repeat rewrite deg_sequent_app in *.
+    unfold deg_context in *.
+    simpl in *.
+    lia.
+Qed.
+    
+      
+    
+    
+    
 
 Lemma deg_IE_impl_or :
   forall Γ A B C Γ' D,
