@@ -438,12 +438,47 @@ Lemma deg_IE_impl_or :
   forall Γ A B C Γ' D,
   deg_sequent (Γ ++ [A ⇒ C] ++ [B ⇒ C] ++ Γ' ⊢? D) <
     deg_sequent (Γ ++ [A ∨ B ⇒ C] ++ Γ' ⊢? D).
-Admitted.
+Proof.
+  intros Γ A B C Γ' D.
+  induction Γ.
+  - simpl.
+    apply Arith_prebase.lt_n_S_stt.
+    Search (_ + ?n < _ + ?n).
+    repeat apply add_lt_mono_r_proj_l2r.
+    Search (S _ + _).
+    rewrite <- plus_Sn_m.
+    Search (((?a + ?b) + ?c)).
+    rewrite Nat.add_assoc.
+    repeat apply add_lt_mono_r_proj_l2r.
+    specialize (deg_at_least_two A) as HA.
+    specialize (deg_at_least_two B) as HB.
+    specialize (deg_at_least_two C) as HC.
+    lia.
+  - repeat rewrite deg_sequent_app in *.
+    repeat rewrite deg_context_app in *.
+    simpl in *.
+    lia.
+Qed.
+    
+    
 
 Lemma deg_IE_impl_impl_left :
   forall Γ A B C Γ' D,
   deg_sequent (Γ ++ [A; B ⇒ C] ++ Γ' ⊢? B) <
     deg_sequent (Γ ++ [(A ⇒ B) ⇒ C] ++ Γ' ⊢? D).
+Proof.
+  
+  intros Γ A B C Γ' D.
+    specialize (deg_at_least_two A) as HA.
+    specialize (deg_at_least_two B) as HB.
+    specialize (deg_at_least_two C) as HC.
+    specialize (deg_at_least_two D) as HD.
+    induction Γ'.
+  - simpl.
+    repeat rewrite deg_context_app.
+    unfold deg_context.
+    simpl.
+    
 Admitted.
 
 Lemma deg_IE_impl_impl_right :
@@ -462,12 +497,40 @@ Admitted.
    construire un séquent avec Γ1 ++ [A] ++ Γ2, et on aura besoin pour
    cela que Γ1 et Γ2 puisse être extraits d’un type sigma, plutôt que
    cacher dans une existentielle.
-*)
+ *)
+
 Lemma in_split_specif :
   forall {A} (eq_dec : forall x y : A, {x = y}+{x <> y}) {x : A} {l : list A},
     In x l ->
     { p : list A * list A | l = fst p ++ x :: snd p }.
-Admitted. (* Important : la preuve devra être terminée par Defined
+Proof.
+  intros A eq_dec x l K.
+  induction l.
+  - inversion K.
+  - simpl in K.
+    specialize (eq_dec a x) as eq_a_x.
+    destruct eq_a_x.
+    + exists ([],l).
+      simpl.
+      rewrite e.
+      reflexivity.
+     
+    + cut (forall A B,( ~A) -> (A \/ B) -> B).
+      intro H.
+      specialize (H (a = x) (In x l)).
+      specialize (H n K).
+      * apply IHl in H.
+        destruct H as (p,e).
+        exists (a :: fst p, snd p).
+        simpl.
+        rewrite e.
+        reflexivity.
+      * intros A0 B M [L|R].
+        -- contradiction.
+        -- assumption.
+           
+        
+Defined. (* Important : la preuve devra être terminée par Defined
 plutôt que Qed pour que la définition de ce lemme soit transparente de
 sorte qu’on puisse réduire ce lemme lors des calculs. *)
 
@@ -481,8 +544,25 @@ Lemma list_split_ind:
   forall A P Q (l : list A)
   (f : forall l0 x l1, l0 ++ [x] ++ l1 = l -> P + { Q l0 x l1 }),
   P + { forall l0 x l1, l0 ++ [x] ++ l1 = l -> Q l0 x l1 }.
-Admitted. (* Defined plutôt que Qed *)
-
+Proof. (* Defined plutôt que Qed *)
+  intros A P Q l f.
+  (*Idea assert into existence a function that lets us get the prefix
+    We need aux taking the list and the accumulator, forall l forall acc
+   *)
+  assert (Prefix : forall post acc : list A, acc ++ post = l  -> P + { forall l0 x l1, l0 ++ [x] ++ l1 = l -> Q (acc ++ l0) x l1 }).
+  induction l.
+  - intros post acc eq.
+    right.
+    intros l0 x l1 H.
+    Search (_ ++ _ = []).
+    apply app_eq_nil in H.
+    destruct H.
+    inversion H0.
+  - intros post acc eq.
+    
+    
+Admitted.
+(*Defined*)  
 (* On prouve la décidabilité de LI par induction sur les
    dérivations. Pour pouvoir découper la preuve en lemmes intermédiaires
    tout en ayant accès à l’hypothèse d’induction, on introduit une
@@ -504,6 +584,26 @@ Section LI_Decidable.
      pour vérifier l’applicabilité de chaque règle. *)
   Lemma is_provable_rec :
     (Γ ⊢ A) + { notT (Γ ⊢ A) }.
+  
+  Proof.
+  (*Notes:
+    Implment a decision algorithm:
+    Prove for a fragment of the logic,
+    Go to def of LI and comment out parts of the logic
+    Send thierry.martinez@inria.fr loads of mails
+    Make proof as modular as possible
+    Prove rule by rule
+    For each rule can we kow how to prove it given a rule
+    Express a that we cannot find a proof by continuing with the present rule
+    Refutation is hard
+    We dont want to introduce codependence between rules
+    Filter out the proofs
+    For each already proven thing
+    if match p with II and  _ _ _ _ => False, else True
+    Simplifies refuation!
+    Read proofs and types
+
+   *)
   Admitted. (* Defined. *)
 End LI_Decidable.
 
@@ -514,6 +614,7 @@ Lemma is_provable :
   forall s,
   let '(Γ ⊢? A) := s in
   (Γ ⊢ A) + { notT (Γ ⊢ A) }.
+Proof.
 Admitted.
 
 (* Pour écrire plus facilement les tests, on oublie les preuves et on
@@ -534,7 +635,7 @@ Definition C := Var "C"%string.
 (* Et on teste le prouveur sur les propositions du TD 1. *)
 Lemma A_imp_A : is_provable_bool ([] ⊢? A ⇒ A) = true.
 Proof.
-Admitted
+Admitted.
 
 Lemma imp_trans : is_provable_bool ([] ⊢? (A ⇒ B) ∧ (B ⇒ C) ⇒ (A ⇒ C)) = true.
 Proof.
