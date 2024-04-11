@@ -430,10 +430,6 @@ Proof.
 Qed.
     
       
-    
-    
-    
-
 Lemma deg_IE_impl_or :
   forall Γ A B C Γ' D,
   deg_sequent (Γ ++ [A ⇒ C] ++ [B ⇒ C] ++ Γ' ⊢? D) <
@@ -459,8 +455,10 @@ Proof.
     simpl in *.
     lia.
 Qed.
-    
-    
+
+Check deg.
+
+  
 
 Lemma deg_IE_impl_impl_left :
   forall Γ A B C Γ' D,
@@ -473,19 +471,42 @@ Proof.
     specialize (deg_at_least_two B) as HB.
     specialize (deg_at_least_two C) as HC.
     specialize (deg_at_least_two D) as HD.
-    induction Γ'.
-  - simpl.
+    repeat rewrite deg_sequent_app.
     repeat rewrite deg_context_app.
-    unfold deg_context.
-    simpl.
-    
-Admitted.
+    repeat rewrite <- Nat.add_assoc.
+    apply add_lt_mono_l_proj_l2r.
+    rewrite Nat.add_comm.
+    Check Nat.add_comm.
+    rewrite Nat.add_comm with (n := deg_context [(A ⇒ B) ⇒ C]).
+    repeat rewrite <- Nat.add_assoc.
+    apply add_lt_mono_l_proj_l2r.
+    unfold deg_context. simpl.
+    nia.
+Qed.
 
 Lemma deg_IE_impl_impl_right :
   forall Γ A B C Γ' D,
   deg_sequent (Γ ++ [C] ++ Γ' ⊢? D) <
     deg_sequent (Γ ++ [(A ⇒ B) ⇒ C] ++ Γ' ⊢? D).
-Admitted.
+Proof.
+  
+  intros Γ A B C Γ' D.
+    specialize (deg_at_least_two A) as HA.
+    specialize (deg_at_least_two B) as HB.
+    specialize (deg_at_least_two C) as HC.
+    specialize (deg_at_least_two D) as HD.
+    repeat rewrite deg_sequent_app.
+    repeat rewrite deg_context_app.
+    repeat rewrite <- Nat.add_assoc.
+    apply add_lt_mono_l_proj_l2r.
+    rewrite Nat.add_comm.
+    Check Nat.add_comm.
+    rewrite Nat.add_comm with (n := deg_context [(A ⇒ B) ⇒ C]).
+    repeat rewrite <- Nat.add_assoc.
+    apply add_lt_mono_l_proj_l2r.
+    unfold deg_context. simpl.
+    nia.
+Qed.
 
 (* On pourra avoir envie de définir le lemme suivant, qui est le
    pendant dans Set du lemme in_split de la bibliothèque standard :
@@ -539,13 +560,26 @@ sorte qu’on puisse réduire ce lemme lors des calculs. *)
    suivant, qui sait chercher une preuve (P) mettant en jeu un élément
    distingué dans une liste (en particulier, une formule dans un
    contexte), ou conclure (Q) qu’il n’en existe pas. *)
+Lemma tl_is_empty : forall A (l : list A), tl l = [] -> (exists x, l = [x]) \/ l = [].
+Proof.
+  intros A l.
+  induction l.
+  - intro H.
+    right. reflexivity.
+  - intro H.
+    left.
+    exists a.
+    f_equal.
+    simpl in H.
+    assumption.
+Qed.
 
 Lemma list_split_ind:
   forall A P Q (l : list A)
   (f : forall l0 x l1, l0 ++ [x] ++ l1 = l -> P + { Q l0 x l1 }),
   P + { forall l0 x l1, l0 ++ [x] ++ l1 = l -> Q l0 x l1 }.
 Proof. (* Defined plutôt que Qed *)
-  intros A P Q l f.
+  intros A P Q l.
   (*Idea assert into existence a function that lets us get the prefix
     We need aux taking the list and the accumulator, forall l forall acc
    *)
@@ -559,7 +593,17 @@ Proof. (* Defined plutôt que Qed *)
     destruct H.
     inversion H0.
   - intros post acc eq.
-    
+    specialize (IHl post (tl acc)) as IHl0.
+    cut (acc ++ post = a :: l -> tl acc ++ post = l).
+    + intro eq0.
+      apply eq0 in eq as eq1.
+      apply IHl0 in eq1 as IHl1.
+      destruct IHl1.
+      * left. assumption.
+      * right.
+        intros l0 x l1 eq2.
+        admit.
+    + intros.
     
 Admitted.
 (*Defined*)  
@@ -568,6 +612,23 @@ Admitted.
    tout en ayant accès à l’hypothèse d’induction, on introduit une
    section où l’on fait cette hypothèse. À l’issue de cette section,
    nous terminons la preuve en appliquant les lemmes par induction. *)
+
+Lemma list_factor_empty : forall {A} (l0 l1 : list A) (a : A), l0 ++ a :: l1 <> [].
+Proof.
+  intros A l0 l1 a Neg.
+  induction l0; inversion Neg.
+Qed.
+
+
+  Lemma increasing_sequent_degree : forall B Γ A, deg_sequent (Γ ⊢? A) < deg_sequent ((B :: Γ) ⊢? A).
+  Proof.
+    intro B.
+    simpl.
+    unfold deg_context.
+    simpl.
+    specialize (deg_at_least_two B).
+    lia.
+  Qed.
 
 Section LI_Decidable.
   Variable S : sequent.
@@ -582,13 +643,65 @@ Section LI_Decidable.
   (* Cette section a pour but de prouver le (gros) lemme suivant.
      Ne pas hésiter à écrire des lemmes intermédiaires auparavant
      pour vérifier l’applicabilité de chaque règle. *)
+
+  Lemma is_provable_rec_top : let A := ⊤ in Γ ⊢ ⊤.
+  Proof.
+    apply II_top.
+  Defined.
+
+  Lemma is_provable_rec_bot :  A = ⊥ -> notT (Γ ⊢ ⊥).
+  Proof.
+    intros AisBot Provable.
+    induction Γ.
+    - inversion Provable;
+        (
+          apply list_factor_empty in H0 +
+                                    apply list_factor_empty in H);
+        contradiction.
+    - specialize (IH l).
+      specialize (increasing_sequent_degree a) as Inc.
+      rewrite AisBot in *.
+      apply IH in Inc.
+      destruct Inc as [L | R].
+      + apply IHl.
+        * intros.
+          admit.
+        * assumption.
+      + admit.
+   Admitted.
+
+      
+  Lemma is_provable_rec_var : forall x,  A = Var x -> (Γ ⊢ Var x) + {notT (Γ ⊢ Var x)}.
+  Proof.
+    intros x eq.
+    rewrite eq in *.
+   specialize (in_dec formula_eq_dec (Var x) Γ) as [InΓ | NInΓ].
+      + left.
+        specialize (in_split_specif formula_eq_dec InΓ) as [[Before After] H].
+        rewrite H.
+        apply I_ax.
+      + right.
+        intro H.
+        apply NInΓ.
+        admit.
+Admitted.
+      
+  
   Lemma is_provable_rec :
     (Γ ⊢ A) + { notT (Γ ⊢ A) }.
-  
   Proof.
+    induction A.
+    - left. apply is_provable_rec_top.
+    - (* apply is_provable_rec_bot.*) admit.
+    - (* apply ...*) admit.
+    - admit.
+
+        
+        
+      
   (*Notes:
     Implment a decision algorithm:
-    Prove for a fragment of the logic,
+    Prove for a fragment of the logic.
     Go to def of LI and comment out parts of the logic
     Send thierry.martinez@inria.fr loads of mails
     Make proof as modular as possible
