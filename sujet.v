@@ -551,7 +551,11 @@ Proof.
         -- assumption.
            
         
-Defined. (* Important : la preuve devra être terminée par Defined
+Defined.
+Check in_split_specif.
+Definition in_split_formula {x l} := @in_split_specif formula formula_eq_dec x l.
+Definition in_dec_formula := in_dec formula_eq_dec.
+(* Important : la preuve devra être terminée par Defined
 plutôt que Qed pour que la définition de ce lemme soit transparente de
 sorte qu’on puisse réduire ce lemme lors des calculs. *)
 
@@ -574,15 +578,35 @@ Proof.
     assumption.
 Qed.
 
-Lemma list_split_ind:
-  forall A P Q (l : list A)
-  (f : forall l0 x l1, l0 ++ [x] ++ l1 = l -> P + { Q l0 x l1 }),
-  P + { forall l0 x l1, l0 ++ [x] ++ l1 = l -> Q l0 x l1 }.
-Proof. (* Defined plutôt que Qed *)
-  intros A P Q l.
+(*
+Je me rappelle plus exactement comment j'ai fait dans les détails mais je me souviens que c'était important que le Q soit quantifié dans la récurrence parce qu'on utilise un Q différent pour l'hyp d'induction
+Mon début d'induction ressemble à ça
+intros A P Q l.
+  (Il est important d'avoir "∀Q" dans l'hypothèse de récurrence, 
+    car dans la valeur retournée par f, les args de Q dépendent 
+    de la taille de l)
+  generalize Q. clear Q.
+  induction l as [|hd tl ih]
+ *)
+(*
+Lemma list_split_aux {A P Q} :
+        forall (l p : list A)
+        (f : forall l0 x l1, l0 ++ [x] ++ l1 = p ++ l -> P + { Q l0 x l1 })
+        (fp : forall l0 x l1 l2, l0 ++ [x] ++ l1 = p ++ l ->
+            l0 ++ [x] ++ l2 = p -> Q l0 x l1),
+          P + { forall l0 x l1, l0 ++ [x] ++ l1 = p ++ l -> Q l0 x l1 }.
+Proof.
+  intros l p f fp.
+  *)
+
+
+    
+
   (*Idea assert into existence a function that lets us get the prefix
     We need aux taking the list and the accumulator, forall l forall acc
    *)
+
+  (*
   assert (Prefix : forall post acc : list A, acc ++ post = l  -> P + { forall l0 x l1, l0 ++ [x] ++ l1 = l -> Q (acc ++ l0) x l1 }).
   induction l.
   - intros post acc eq.
@@ -606,6 +630,7 @@ Proof. (* Defined plutôt que Qed *)
     + intros.
     
 Admitted.
+*)
 (*Defined*)  
 (* On prouve la décidabilité de LI par induction sur les
    dérivations. Pour pouvoir découper la preuve en lemmes intermédiaires
@@ -630,6 +655,68 @@ Qed.
     lia.
   Qed.
 
+
+  Lemma list_split_in : forall A P Q l (eq_dec : forall a b: A, {a = b} + {a <> b} ) (f : forall x : A, In x l -> P + {Q x}), P + {forall x, In x l -> Q x}.
+  Proof.
+    intros A P Q l eq_dec f.
+    generalize dependent  Q.
+    induction l.
+    - intros Q f.
+      right.
+      intros x H.
+      inversion H.
+    - intros Q f.
+      simpl in *.
+      assert (g := f).
+      specialize (f a) as [Easy | Annoying].
+      +  left. reflexivity.
+      + left. assumption.
+      + right.
+        intros x [Eq | Right].
+        * rewrite <- Eq. assumption.
+        * assert (Q0 := Q).
+          admit.
+        (*  assert (h := fun x (p : In x l) => if eq_dec x a then Annoying else g x (or_intror p)).*)
+       
+Admitted.
+
+
+
+
+  
+Lemma list_split_ind:
+  forall A P Q (l : list A)
+  (f : forall l0 x l1, l0 ++ [x] ++ l1 = l -> P + { Q l0 x l1 }),
+  P + { forall l0 x l1, l0 ++ [x] ++ l1 = l -> Q l0 x l1 }.
+Proof. (* Defined plutôt que Qed *)
+  intros A P Q l.
+  
+  assert (Prefix : forall post acc : list A, acc ++ post = l  -> P + { forall l0 x l1, l0 ++ [x] ++ l1 = l -> Q (acc ++ l0) x l1 }).
+  generalize dependent Q.
+  induction l.
+  - intros Q post acc H.
+    right.
+    intros l0 x l1 H0.
+    simpl in H0.
+      apply list_factor_empty in H0.
+      contradiction.
+  - intros Q post acc H.
+    (*Idea: if i find the element within l -> ok, if i dont check if a is the element*)
+    admit.
+Admitted.
+     
+Lemma var_characteristic : forall Γ x,  (Γ ⊢ Var x) -> In (Var x) Γ.
+Proof.
+  intros Γ x H.
+  induction Γ.
+  - inversion H; ( (apply list_factor_empty in H1) + (apply list_factor_empty in H0)); contradiction.
+  - simpl.
+    admit.
+Admitted.
+    
+    
+
+  
 Section LI_Decidable.
   Variable S : sequent.
 
@@ -675,9 +762,10 @@ Section LI_Decidable.
   Proof.
     intros x eq.
     rewrite eq in *.
-   specialize (in_dec formula_eq_dec (Var x) Γ) as [InΓ | NInΓ].
-      + left.
-        specialize (in_split_specif formula_eq_dec InΓ) as [[Before After] H].
+   specialize (in_dec_formula (Var x) Γ) as [InΓ | NInΓ].
+    + left.
+      Check in_split_formula.
+        specialize (in_split_formula InΓ) as [[Before After] H].
         rewrite H.
         apply I_ax.
       + right.
@@ -695,6 +783,8 @@ Admitted.
     - (* apply is_provable_rec_bot.*) admit.
     - (* apply ...*) admit.
     - admit.
+    - admit.
+    - admit. 
 
         
         
