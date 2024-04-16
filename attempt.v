@@ -828,27 +828,18 @@ Proof.
   intros H H0.
   lia.
 Qed.
-  
 
-Lemma var_characteristic : forall Γ x,  (Γ ⊢ Var x) -> In (Var x) Γ.
+Lemma list_goofiness {A} : forall l (a : A), a :: l <> l.
 Proof.
-  intros Γ x.
-  
-  induction Γ.
-  - intro H. inversion H; kill_empty.
-  - intro H.
-    destruct (formula_eq_dec a (Var x)) as [L | R].
-    + simpl. left. assumption.
-    + simpl. right.
+  intros l a H.
+  generalize dependent a.
+  induction l.
+  - intros a H.  inversion H.
+  - intros a0 H. inversion H. apply IHl in H2. contradiction.
+Qed.
 
-Admitted.
-    
+Definition context_eq_dec := list_eq_dec formula_eq_dec.
 
-    
-    
-    
-
-  
 Section LI_Decidable.
   Variable S : sequent.
 
@@ -863,357 +854,97 @@ Section LI_Decidable.
      Ne pas hésiter à écrire des lemmes intermédiaires auparavant
      pour vérifier l’applicabilité de chaque règle. *)
 
-  Lemma is_provable_rec_top : let A := ⊤ in Γ ⊢ ⊤.
-  Proof.
-    apply II_top.
-  Defined.
+  Lemma provable_with_II_top :
+  (Γ ⊢ A) +
+  { forall (p: LI S),
+    match p return Prop with II_top => False | _ => True end }.
+Proof.
+  destruct (formula_eq_dec A ⊤) as [A_eq_top | A_neq_top].
+  - left. rewrite A_eq_top. apply II_top.
+  - right. intro p.
+    assert (let '(Γ ⊢? A) := S in A <> ⊤) as fst_S_neq_top. {
+      destruct S. assumption.
+    }
+    destruct p; trivial.
+    auto.
+Defined.
 
-  Lemma is_provable_rec_bot :  A = ⊥ -> notT (Γ ⊢ ⊥).
-  Proof.
-    intros AisBot Provable.
-    induction Γ.
-    - inversion Provable;
-        (
-          apply list_factor_empty in H0 +
-                                    apply list_factor_empty in H);
-        contradiction.
-    - specialize (IH l).
-      specialize (increasing_sequent_degree a) as Inc.
-      rewrite AisBot in *.
-      apply IH in Inc.
-      destruct Inc as [L | R].
-      + apply IHl.
-        * intros.
-          admit.
-        * assumption.
-      + admit.
-  Admitted.
-                 
+
+
+Lemma provable_with_I_ax :
+   (Γ ⊢ A) +
+  { forall (p: LI S),
+      match p return Prop with I_ax => False | _ => True  end }.
+Proof.
+  destruct (in_dec_formula A Γ) as [A_in | A_nin].
+  - left.
+    apply in_split_formula in A_in.
+    destruct A_in as [[pre post] eq].
+    simpl in eq.
+    rewrite eq.
+    apply I_ax.
+  - right. intro p.
+    assert (let '(Γ ⊢? A) := S in ~ In A Γ) as A_nin_ctx_S. {
+      destruct S. assumption.
+    }
+    destruct p; trivial.
+    apply A_nin_ctx_S.
+    apply in_or_app.
+    right.
+    apply in_or_app.
+    left.
+    simpl.
+    auto.
+Defined.
+
+
+Lemma provable_with_II_and :
+   (Γ ⊢ A) +
+  { forall (p : LI S),
+        match p with
+        | II_and _ _ => False 
+        | _ => True
+        end
+  }.
+Proof.
+  induction A.
+  - 
+  
+Admitted.
+
+Lemma provable_with_IE_bot :
+  (Γ ⊢ A) + { forall (p : LI S),
+        match p return Prop with IE_bot => False | _ => True end }.
+Proof.
+  destruct (in_dec_formula ⊥ Γ) as [bot_in_gamma | bot_nin_gamma].
+  - left. apply in_split_formula in bot_in_gamma.
+    destruct bot_in_gamma as [(pre, post) eq].
+    simpl in eq.
+    rewrite eq.
+    apply IE_bot.
+  - right. intro p.
+    assert (let '(Γ ⊢? A) := S in ~ In ⊥ Γ) as bot_nin_ctx_S.
+    {
+      destruct S. assumption.
+    }
+    destruct p; trivial.
+    apply bot_nin_ctx_S.
+    apply in_or_app.
+    right.
+    apply in_or_app.
+    left.
+    simpl.
+    auto.
+Defined.
+
+
+    
   
   Lemma is_provable_rec :
     (Γ ⊢ A) + { notT (Γ ⊢ A) }.
   Proof.
-    remember (deg_sequent (Γ ⊢? A)) as n.
-    - specialize (deg_sequent_geq_two Γ A) as Absurd. lia.
-    - induction A.
-      + left. apply II_top.
-      + specialize (deg_IE_bot Γ) as Geq.
-        rewrite <- Heqn in Geq.
-        specialize (Nat.eq_dec (Datatypes.S n) (deg_sequent ([] ⊢? ⊥))) as [L | R].
-        * simpl in L. rewrite Heqn in L. simpl in L.
-          cut (deg_context Γ = 0).
-          -- intro H.
-             apply zero_context_is_empty in H.
-             rewrite H in *.
-             clear H L.
-             right.
-             intro K.
-             inversion K; kill_empty.
-          -- lia.
-        * Search (?a <= ?b /\ ?a <> ?b).
-          cut (deg_sequent ([] ⊢? ⊥) <= Datatypes.S n /\  deg_sequent ([] ⊢? ⊥) <> Datatypes.S n).
-          -- intro Hyp.
-             specialize (proj2 (Nat.le_neq (deg_sequent ([] ⊢? ⊥)) (Datatypes.S n)) Hyp) as K.
-             assert (J : deg_sequent ([] ⊢? ⊥) < Datatypes.S n). assumption.
-             apply IH in K.
-             destruct K as [LL | RR].
-             ++  inversion LL; kill_empty.
-             ++ simpl in J.
-                left.
-                induction Γ.
-                ** rewrite Heqn in J.
-                  simpl in J.
-                  lia.
-                ** admit.
-          -- admit.
-      + admit.
-      + specialize (deg_II_and_left Γ f1 f2) as F1.
-        specialize (deg_II_and_right Γ f1 f2) as F2.
-        rewrite <- Heqn in F1,F2.
-        apply IH in F1,F2.
-        destruct F1 as [F1 | NF1];
-          destruct F2 as [F2| NF2].
-        * left. apply II_and; assumption.
-        * right.
-          intro K.    
-          inversion K.
-          -- admit.
-          -- apply NF2.
-             rewrite <- H0.
-             apply IE_bot.
-          -- contradiction.
-          -- admit.
-          -- admit.
-          -- admit.
-          -- admit.
-          -- admit.
-          -- admit.
-          -- admit.
-          -- admit.
-        * admit.
-        * admit.
-      + specialize (deg_II_or_left Γ f1 f2) as F1.
-        specialize (deg_II_or_right Γ f1 f2) as F2.
-        rewrite <- Heqn in F1,F2.
-        apply IH in F1,F2.
-        destruct F1 as [F1 | NF1]; destruct F2 as [F2 | NF2].
-        * left. apply II_or_left. assumption.
-        * left. apply II_or_left. assumption.
-        * left. apply II_or_right. assumption.
-        * right. intro K.
-          inversion K.
-          -- specialize (Nat.eq_dec (Datatypes.S n) (deg_sequent (Γ ⊢? f1))) as [L | R].
-             ++ apply IHf1 in L.
-                ** admit.
-                ** admit.
-             ++ admit.
-          -- apply NF1.
-             rewrite <- H0.
-             apply IE_bot.
-          -- admit.
-          -- admit.
-          -- admit.
-          -- admit.
-          -- admit.
-          -- admit.
-          -- admit.
-          -- admit.
-          -- admit.
-          -- admit.
-      + specialize (deg_II_impl Γ f1 f2) as F.
-        rewrite <- Heqn in F.
-        apply IH in F.
-        destruct F as [F | NF].
-        * left. apply II_impl. assumption.
-        * admit.
+    
 Admitted.
 
              
            
-        
-          
-        
-        
-      
-  (*Notes:
-    Implment a decision algorithm:
-    Prove for a fragment of the logic.
-    Go to def of LI and comment out parts of the logic
-    Send thierry.martinez@inria.fr loads of mails
-    Make proof as modular as possible
-    Prove rule by rule
-    For each rule can we kow how to prove it given a rule
-    Express a that we cannot find a proof by continuing with the present rule
-    Refutation is hard
-    We dont want to introduce codependence between rules
-    Filter out the proofs
-    For each already proven thing
-    if match p with II and  _ _ _ _ => False, else True
-    Simplifies refuation!
-
-   *)
-   (* Defined. *)
-End LI_Decidable.
-
-(* On peut facilement déduire is_provable de is_provable_rec par
-   induction. Noter que le type du prouveur garantie sa correction et
-   sa complétude vis-à-vis de LI ! *)
-Lemma is_provable :
-  forall s,
-  let '(Γ ⊢? A) := s in
-  (Γ ⊢ A) + { notT (Γ ⊢ A) }.
-Proof.
-Admitted.
-
-(* Pour écrire plus facilement les tests, on oublie les preuves et on
-   réduit la réponse du prouveur à un booléen. *)
-Definition is_provable_bool '(Γ ⊢? A) : bool :=
-  if is_provable (Γ ⊢? A) then
-    true
-  else
-    false.
-
-(* On se donne quelques variables. *)
-Definition A := Var "A"%string.
-
-Definition B := Var "B"%string.
-
-Definition C := Var "C"%string.
-
-(* Et on teste le prouveur sur les propositions du TD 1. *)
-Lemma A_imp_A : is_provable_bool ([] ⊢? A ⇒ A) = true.
-Proof.
-Admitted.
-
-Lemma imp_trans : is_provable_bool ([] ⊢? (A ⇒ B) ∧ (B ⇒ C) ⇒ (A ⇒ C)) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Definition equiv A B := (A ⇒ B) ∧ (B ⇒ A).
-
-Infix "⇔" := equiv (at level 30).
-
-Lemma curry : is_provable_bool ([] ⊢? (A ∧ B ⇒ C) ⇔ (A ⇒ B ⇒ C)) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma and_assoc : is_provable_bool ([] ⊢? (A ∧ B) ∧ C ⇔ A ∧ (B ∧ C)) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma and_comm : is_provable_bool ([] ⊢? A ∧ B ⇔ B ∧ A) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma or_assoc : is_provable_bool ([] ⊢? (A ∨ B) ∨ C ⇔ A ∨ (B ∨ C)) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma or_comm : is_provable_bool ([] ⊢? A ∨ B ⇔ B ∨ A) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma and_top : is_provable_bool ([] ⊢? A ∧ ⊤ ⇔ A) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma and_bot : is_provable_bool ([] ⊢? A ∧ ⊥ ⇔ ⊥) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma or_top : is_provable_bool ([] ⊢? A ∨ ⊤ ⇔ ⊤) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma or_bot : is_provable_bool ([] ⊢? A ∨ ⊥ ⇔ A) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma and_dist_or : is_provable_bool ([] ⊢? A ∧ (B ∨ C) ⇔ A ∧ B ∨ A ∧ C) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma or_dist_and : is_provable_bool ([] ⊢? A ∨ (B ∧ C) ⇔ (A ∨ B) ∧ (A ∨ C)) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma imp_dist_and : is_provable_bool ([] ⊢? (A ⇒ (B ∧ C)) ⇔ (A ⇒ B) ∧ (A ⇒ C)) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma imp_dist_or : is_provable_bool ([] ⊢? ((A ∨ B) ⇒ C) ⇔ (A ⇒ C) ∧ (B ⇒ C)) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Definition neg A := A ⇒ ⊥.
-
-Notation "¬" := neg (at level 5).
-
-Lemma neg_neg_not_provable : is_provable_bool ([] ⊢? ¬ (¬ A) ⇒ A) = false.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma neg_neg : is_provable_bool ([] ⊢? A ⇒ ¬ (¬ A)) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma neg_neg_neg : is_provable_bool ([] ⊢? ¬ (¬ (¬ A)) ⇔ ¬ A) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma em_not_provable : is_provable_bool ([] ⊢? ¬ A ∨ A) = false.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma neg_neg_em : is_provable_bool ([] ⊢? ¬ (¬ (¬ A ∨ A))) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma neg_top : is_provable_bool ([] ⊢? ¬ ⊤ ⇔ ⊥) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma neg_bot : is_provable_bool ([] ⊢? ¬ ⊥ ⇔ ⊤) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma neg_a_or_neg_b : is_provable_bool ([] ⊢? ¬ A ∨ ¬ B ⇒ ¬ (A ∧ B)) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma neg_a_and_b_not_provable : is_provable_bool ([] ⊢? ¬ (A ∧ B) ⇒ ¬ A ∨ ¬ B) = false.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma neg_a_or_b : is_provable_bool ([] ⊢? ¬ (A ∨ B) ⇔ ¬ A ∧ (¬ B)) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma neg_neg_neg_a_and_b : is_provable_bool ([] ⊢? ¬ (¬ (¬ (A ∧ B) ⇔ ¬ A ∨ ¬ B))) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma imp_decomp_not_provable : is_provable_bool ([] ⊢? (A ⇒ B) ⇒ ¬ A ∨ B) = false.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma imp_comp : is_provable_bool ([] ⊢? ¬ A ∨ B ⇒ (A ⇒ B)) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma neg_neg_imp_decomp : is_provable_bool ([] ⊢? ¬ (¬ ((A ⇒ B) ⇔ ¬ A ∨ B))) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma neg_imp_decomp_not_provable : is_provable_bool ([] ⊢? ¬ (A ⇒ B) ⇒ A ∧ (¬ B)) = false.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma neg_imp_comp : is_provable_bool ([] ⊢? A ∧ (¬ B) ⇒ ¬ (A ⇒ B)) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma neg_neg_neg_imp_decomp : is_provable_bool ([] ⊢? ¬ (¬ (¬ (A ⇒ B) ⇔ A ∧ (¬ B)))) = true.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma pierce_not_provable : is_provable_bool ([] ⊢? ((A ⇒ B) ⇒ A) ⇒ A) = false.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma neg_neg_pierce : is_provable_bool ([] ⊢? ¬ (¬ (((A ⇒ B) ⇒ A) ⇒ A))) = true.
-Proof.
-  reflexivity.
-Qed.
