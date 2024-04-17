@@ -641,66 +641,6 @@ Proof.
     assumption.
 Qed.
 
-(*
-Je me rappelle plus exactement comment j'ai fait dans les détails mais je me souviens que c'était important que le Q soit quantifié dans la récurrence parce qu'on utilise un Q différent pour l'hyp d'induction
-Mon début d'induction ressemble à ça
-intros A P Q l.
-  (Il est important d'avoir "∀Q" dans l'hypothèse de récurrence, 
-    car dans la valeur retournée par f, les args de Q dépendent 
-    de la taille de l)
-  generalize Q. clear Q.
-  induction l as [|hd tl ih]
- *)
-(*
-Lemma list_split_aux {A P Q} :
-        forall (l p : list A)
-        (f : forall l0 x l1, l0 ++ [x] ++ l1 = p ++ l -> P + { Q l0 x l1 })
-        (fp : forall l0 x l1 l2, l0 ++ [x] ++ l1 = p ++ l ->
-            l0 ++ [x] ++ l2 = p -> Q l0 x l1),
-          P + { forall l0 x l1, l0 ++ [x] ++ l1 = p ++ l -> Q l0 x l1 }.
-Proof.
-  intros l p f fp.
-  *)
-
-
-    
-
-  (*Idea assert into existence a function that lets us get the prefix
-    We need aux taking the list and the accumulator, forall l forall acc
-   *)
-
-  (*
-  assert (Prefix : forall post acc : list A, acc ++ post = l  -> P + { forall l0 x l1, l0 ++ [x] ++ l1 = l -> Q (acc ++ l0) x l1 }).
-  induction l.
-  - intros post acc eq.
-    right.
-    intros l0 x l1 H.
-    Search (_ ++ _ = []).
-    apply app_eq_nil in H.
-    destruct H.
-    inversion H0.
-  - intros post acc eq.
-    specialize (IHl post (tl acc)) as IHl0.
-    cut (acc ++ post = a :: l -> tl acc ++ post = l).
-    + intro eq0.
-      apply eq0 in eq as eq1.
-      apply IHl0 in eq1 as IHl1.
-      destruct IHl1.
-      * left. assumption.
-      * right.
-        intros l0 x l1 eq2.
-        admit.
-    + intros.
-    
-Admitted.
-*)
-(*Defined*)  
-(* On prouve la décidabilité de LI par induction sur les
-   dérivations. Pour pouvoir découper la preuve en lemmes intermédiaires
-   tout en ayant accès à l’hypothèse d’induction, on introduit une
-   section où l’on fait cette hypothèse. À l’issue de cette section,
-   nous terminons la preuve en appliquant les lemmes par induction. *)
-
 Lemma list_factor_empty : forall {A}  (l0 l1 : list A) (a : A), l0 ++ a :: l1 <> [].
 Proof.
   intros A l0 l1 a Neg.
@@ -749,6 +689,46 @@ Admitted.
 
 
  
+  Lemma weird_left : forall A B, notT (B ∧ A = A).
+  Proof.
+    intros A B H.
+    induction A
+    ; inversion H.
+    apply IHA2.
+    rewrite H1.
+    assumption.
+  Qed.
+
+  Lemma weird_right : forall A B, notT (A ∧ B = A).
+  Proof.
+    intros A B H.
+    induction A; inversion H.
+    apply IHA1.
+    rewrite H2.
+    assumption.
+  Qed.
+
+  Lemma weird_or_left : forall A B, notT (B ∨ A = A).
+  Proof.
+    intros A B H.
+    induction A; inversion H.
+    apply IHA2.
+    rewrite H1.
+    assumption.
+  Qed.
+
+  
+  Lemma weird_or_right : forall A B, notT (A ∨ B = A).
+  Proof.
+    intros A B H.
+    induction A; inversion H.
+    apply IHA1.
+    rewrite H2.
+    assumption.
+  Qed.
+
+
+  
 
 
 
@@ -836,9 +816,70 @@ Proof.
   induction l.
   - intros a H.  inversion H.
   - intros a0 H. inversion H. apply IHl in H2. contradiction.
-Qed.
+Defined.
 
 Definition context_eq_dec := list_eq_dec formula_eq_dec.
+
+Lemma decidable_context_split : forall (A : formula) Γ, Γ <> []   -> {'(Γ',Γ'') | Γ' ++ [A] ++ Γ'' = Γ} + {forall Γ' Γ'', Γ <> Γ' ++ [A] ++ Γ''}.
+Proof.
+  intros A Γ H.
+  - specialize (in_dec_formula A Γ) as [Ok | Bad].
+    + apply in_split_formula in Ok.
+      destruct Ok as [(L,R) eq].
+      simpl in eq.
+      left.
+    exists (L,R).
+    auto.
+  + right.
+    intros Γ' Γ'' N.
+    apply Bad.
+    rewrite N.
+    apply in_or_app.
+    right.
+    simpl.
+    auto.
+Qed.
+
+Lemma decidable_start_of_context : forall (A : formula) Γ, Γ <> [] -> { 'Δ | Γ = A :: Δ } +  { forall Δ, notT (Γ = A :: Δ) } .
+Proof.
+  intros A Γ H.
+  destruct Γ.
+  - contradiction.
+  - specialize (formula_eq_dec A f) as [Eq | Neq].
+    + left. exists Γ. subst. easy.
+    + right. intros Δ N. inversion N. auto.
+Qed.
+
+  
+
+
+(*I sould like to have  a notion of sublist to make the previous lemmas more general*)
+Inductive sublist {A} : list A -> list A -> Prop :=
+| Base : forall l, sublist [] l
+| Unshift : forall a l l', sublist l l' -> sublist l (a :: l')
+| Pop : forall a l l', sublist l l' -> sublist l ( l' ++ [a])                                             
+.
+Notation "l ⊆ l'" := (sublist l l') (at level 50).
+
+
+Lemma sublist_dec_formula : forall (l Γ : list formula),  {l ⊆ Γ} + {notT (l ⊆ Γ)}.
+Proof.
+  intros l Γ.
+  induction Γ.
+  - destruct l as [empty | nempty].
+    + left. apply Base.
+    + right. intro N. inversion N. kill_empty.
+  - destruct IHΓ as [Inside | Ninside].
+    + left. apply Unshift. assumption.
+    + right. intro. inversion H.
+      * subst. apply Ninside. apply Base.
+      * subst. auto.
+      * subst. apply Ninside.
+        specialize (formula_eq_dec a a0) as [Eq | Neq]. admit.
+        admit.
+Admitted.
+
+
 
 Section LI_Decidable.
   Variable S : sequent.
@@ -907,10 +948,68 @@ Lemma provable_with_II_and :
         end
   }.
 Proof.
-  induction A.
-  - 
-  
-Admitted.
+   assert (S = (Γ ⊢? A)) as S_struct. {
+    destruct S.
+    reflexivity.
+   }.
+   induction A.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - destruct (formula_eq_dec A (f1 ∧ f2)) as [EQ | NEQ].
+     +
+       specialize (IH Γ f1) as F1.
+       specialize (IH Γ f2) as F2.
+       specialize (deg_II_and_left Γ f1 f2) as L.
+       specialize (deg_II_and_right Γ f1 f2) as R.
+       apply F1 in L.
+       apply F2 in R.
+       clear F1 F2.
+       destruct L as [T | F];destruct R as [T0 | F0].
+       * left. apply II_and; assumption.
+       * right. intro p. assert (let '(Γ ⊢? A) := S in notT (A =  f2)) as A_neq_f2.
+         {
+           destruct S. intro N. inversion S_struct. rewrite N in H0. symmetry in H0. apply weird_left in H0. easy.
+         }
+         destruct S. destruct p; trivial.
+         inversion S_struct.
+         subst.
+         contradiction.
+       * right. intro p. assert (let '(Γ ⊢? A) := S in notT (A = f1)) as A_neq_f1.
+         {
+           destruct S. intro N. inversion S_struct. rewrite N in H0. symmetry in H0. apply weird_right in H0. easy.
+         }
+         destruct S. destruct p; trivial.
+         inversion S_struct.
+         subst.
+         contradiction.
+       * right. intro p. assert (let '(Γ ⊢? A) := S in notT (A = f1 /\ A = f2)) as A_neq_f1_and_f2.
+         {
+           destruct S. intros [N1 N2]. inversion S_struct.
+           subst.
+           symmetry in H0.
+           apply weird_left in H0.
+           easy.
+         }
+         destruct S. destruct p; trivial.
+         inversion S_struct.
+         subst.
+         contradiction.
+     + right.
+       intro p.
+       assert (let '(Γ ⊢? A) := S in notT (A = f1 ∧  f2)) as A_neq_f1_f2.
+       {
+         destruct S. intro N. auto.
+       }
+       destruct p; trivial.
+       inversion S_struct.
+       subst.
+       auto.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+Defined.
+       
+       
 
 Lemma provable_with_IE_bot :
   (Γ ⊢ A) + { forall (p : LI S),
@@ -936,6 +1035,175 @@ Proof.
     simpl.
     auto.
 Defined.
+
+
+Lemma provable_with_II_or_left :
+   (Γ ⊢ A) +
+  { forall (p : LI S),
+        match p with
+        | II_or_left _ => False 
+        | _ => True
+        end
+  }.
+Proof.
+   assert (S = (Γ ⊢? A)) as S_struct. {
+    destruct S.
+    reflexivity.
+   }.
+   induction A.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - destruct (formula_eq_dec A (f1 ∨ f2)) as [EQ | NEQ].
+     + specialize (deg_II_or_left Γ f1 f2) as F1.
+       specialize (deg_II_or_right Γ f1 f2) as F2.
+       apply IH in F1, F2.
+       destruct F1 as [F1 | NF1]; destruct F2 as [F2 | NF2].
+       * left. apply II_or_left. assumption.
+       * left. apply II_or_left. assumption.
+       * left. apply II_or_right. assumption.
+       * right.
+         intro p.
+         assert (let '(Γ ⊢? A) := S in notT (A = f1 /\ A =  f2)) as A_neq_f1_f2.
+         {
+           destruct S. intros [L R]. inversion S_struct. rewrite L in H0. symmetry in H0. apply weird_or_right in H0. easy.
+         }
+         destruct S.
+         destruct p; trivial.
+         inversion S_struct.
+         subst.
+         auto.
+     + right.
+       intro p.
+       assert (let '(Γ ⊢? A) := S in notT (A = f1 ∨  f2)) as A_neq_f1_or_f2.
+       {
+         destruct S. auto.
+       }
+       destruct p; trivial.
+       inversion S_struct.
+       subst.
+       auto.
+   -  right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+Defined.
+
+
+Lemma provable_with_II_or_right :
+   (Γ ⊢ A) +
+  { forall (p : LI S),
+        match p with
+        | II_or_right _ => False 
+        | _ => True
+        end
+  }.
+Proof.
+   assert (S = (Γ ⊢? A)) as S_struct. {
+    destruct S.
+    reflexivity.
+   }.
+   induction A.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - destruct (formula_eq_dec A (f1 ∨ f2)) as [EQ | NEQ].
+     + specialize (deg_II_or_left Γ f1 f2) as F1.
+       specialize (deg_II_or_right Γ f1 f2) as F2.
+       apply IH in F1, F2.
+       destruct F1 as [F1 | NF1]; destruct F2 as [F2 | NF2].
+       * left. apply II_or_left. assumption.
+       * left. apply II_or_left. assumption.
+       * left. apply II_or_right. assumption.
+       * right.
+         intro p.
+         assert (let '(Γ ⊢? A) := S in notT (A = f1 /\ A =  f2)) as A_neq_f1_f2.
+         {
+           destruct S. intros [L R]. inversion S_struct. rewrite L in H0. symmetry in H0. apply weird_or_right in H0. easy.
+         }
+         destruct S.
+         destruct p; trivial.
+         inversion S_struct.
+         subst.
+         auto.
+     + right.
+       intro p.
+       assert (let '(Γ ⊢? A) := S in notT (A = f1 ∨  f2)) as A_neq_f1_or_f2.
+       {
+         destruct S. auto.
+       }
+       destruct p; trivial.
+       inversion S_struct.
+       subst.
+       auto.
+   -  right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+Defined.
+
+
+Lemma provable_with_II_impl :
+   (Γ ⊢ A) +
+  { forall (p : LI S),
+        match p with
+        | II_impl _ => False 
+        | _ => True
+        end
+  }.
+Proof.
+   assert (S = (Γ ⊢? A)) as S_struct. {
+    destruct S.
+    reflexivity.
+   }.
+   induction A.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - right. intro p. destruct S. inversion S_struct. destruct p; trivial. inversion S_struct.
+   - destruct (formula_eq_dec A (f1 ⇒ f2)) as [EQ | NEQ].
+     + specialize (deg_II_impl Γ f1 f2) as F.
+       apply IH in F.
+       destruct F as [F | NF].
+       * left. apply II_impl. assumption.
+       * right.
+         intro p.
+         assert (let '(Γ ⊢? A) := S in notT (Γ ++ [f1] ⊢ f2)) as A_neq_f1_impl_f2.
+         {
+           destruct S. assumption.
+         }
+         destruct S.
+         destruct p; trivial.
+         inversion S_struct.
+         subst.
+         auto.
+     + right.
+       intro p.
+       assert (let '(Γ ⊢? A) := S in notT (A = f1 ⇒  f2)) as A_neq_f1_or_f2.
+       {
+         destruct S. auto.
+       }
+       destruct p; trivial.
+       inversion S_struct.
+       subst.
+       auto.
+Defined.
+
+
+Lemma provable_with_IE_and :
+   (Γ ⊢ A) +
+  { forall (p : LI S),
+        match p with
+        | IE_and _ => False 
+        | _ => True
+        end
+  }.
+Proof.
+   assert (S = (Γ ⊢? A)) as S_struct. {
+    destruct S.
+    reflexivity.
+   }.
+   
+   
+Defined.
+
 
 
     
