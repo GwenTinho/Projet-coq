@@ -729,6 +729,19 @@ Admitted.
 
 
   
+  Lemma list_empty_dec : forall {A} (l : list A), {l = []} + {l <> []}.
+  Proof.
+    intros A l.
+    induction l.
+    - left. reflexivity.
+    - destruct IHl as [Empty | NEmpty].
+      + right.
+        rewrite Empty.
+        intro N.
+        inversion N.
+      + right.
+        intro N. inversion N.
+   Defined.
 
 
 
@@ -748,8 +761,23 @@ Proof. (* Defined plutôt que Qed *)
     simpl in H0.
       kill_empty.
   - intros Q post acc H.
-    (*Idea: if i find the element within l -> ok, if i dont check if a is the element*)
-    admit.
+    specialize (list_empty_dec acc) as [Acc_nil | Acc_not_nil].
+    + specialize (IHl Q (tl post) []).
+    assert ( tl post = l).
+    {
+      rewrite Acc_nil in H. simpl in H. rewrite H. reflexivity.
+    }
+    simpl in IHl.
+    apply IHl in H0.
+    destruct H0 as [L | R].
+      * left. assumption.
+      * right. intros l0 x l1 H0.
+        apply R.
+        rewrite Acc_nil.
+        simpl.
+        admit.
+     + admit.
+  -  admit.
 Admitted.
 
 Lemma zero_context_is_empty : forall Γ, deg_context Γ = 0 -> Γ = [].
@@ -840,6 +868,20 @@ Proof.
     auto.
 Qed.
 
+Lemma context_split_ex : forall Γ : list formula, Γ <> [] ->  {'(Γ',Γ'', A) | Γ' ++ [A] ++ Γ'' = Γ}.
+Proof.
+  intros Γ H.
+  induction Γ.
+  - easy.
+  - specialize (list_empty_dec Γ) as [Nil | NNil].
+    + exists ([], [], a). rewrite Nil. reflexivity.
+    + apply IHΓ in NNil.
+      destruct NNil as [t eq].
+      destruct t as [[l r] A].
+      exists (a::l,r, A). rewrite <- eq. reflexivity.
+Defined.
+
+
 Lemma decidable_start_of_context : forall (A : formula) Γ, Γ <> [] -> { 'Δ | Γ = A :: Δ } +  { forall Δ, notT (Γ = A :: Δ) } .
 Proof.
   intros A Γ H.
@@ -850,7 +892,7 @@ Proof.
     + right. intros Δ N. inversion N. auto.
 Qed.
 
-  
+
 
 
 (*I sould like to have  a notion of sublist to make the previous lemmas more general*)
@@ -1186,6 +1228,18 @@ Proof.
        auto.
 Defined.
 
+Lemma decidable_and : forall A0, { '(B, C) | A0 = B ∧ C } + { forall B C, A0 <> B ∧ C }.
+Proof.
+  intro A0.
+  induction A0.
+  - right. intros B C N. inversion N.
+  - right. intros B C N. inversion N.
+  - right. intros B C N. inversion N.
+  - left. exists (A0_1,A0_2). reflexivity.
+  - right. intros B C N. inversion N.
+  - right. intros B C N. inversion N.
+Defined.
+
 
 Lemma provable_with_IE_and :
    (Γ ⊢ A) +
@@ -1196,13 +1250,40 @@ Lemma provable_with_IE_and :
         end
   }.
 Proof.
-   assert (S = (Γ ⊢? A)) as S_struct. {
+  specialize (list_empty_dec Γ) as [Empty | Nempty].
+  - 
+    right.
+    assert (S = (Γ ⊢? A)) as S_struct. {
     destruct S.
     reflexivity.
-   }.
+    }.
+    destruct S.
+    destruct p; trivial.
+    inversion S_struct.
+    subst.
+    rewrite Empty in H0.
+    kill_empty.
+  - apply context_split_ex in Nempty.
+    destruct Nempty as [[[l r] A0] eq].
+    destruct (decidable_and A0) as [[[B C] eq0] | H].
+    + rewrite eq0 in eq.
+      specialize (deg_IE_and l B C r A) as H.
+      rewrite eq in H.
+      apply IH in H.
+      destruct H as [Easy | Bad].
+      *  left.
+         rewrite <- eq.
+         apply IE_and.
+         assumption.
+      * right.
+        assert (S = (Γ ⊢? A)) as S_struct. {
+    destruct S.
+    reflexivity.
+    }.
+    admit.
    
    
-Defined.
+Admitted.
 
 
 
@@ -1211,6 +1292,7 @@ Defined.
   Lemma is_provable_rec :
     (Γ ⊢ A) + { notT (Γ ⊢ A) }.
   Proof.
+    
     
 Admitted.
 
