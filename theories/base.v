@@ -624,3 +624,84 @@ Proof.
     simpl.
     apply @I_ax with (Γ := []).
 Qed.
+
+
+Lemma decidable_and : forall A0, { '(B, C) | A0 = B ∧ C } + { forall B C, A0 <> B ∧ C }.
+Proof.
+  intro A0.
+  induction A0.
+  - right. intros B C N. inversion N.
+  - right. intros B C N. inversion N.
+  - right. intros B C N. inversion N.
+  - left. exists (A0_1,A0_2). reflexivity.
+  - right. intros B C N. inversion N.
+  - right. intros B C N. inversion N.
+Defined.
+
+Lemma decidable_or : forall A0, { '(B, C) | A0 = B ∨ C } + { forall B C, A0 <> B ∨ C }.
+Proof.
+  intro A0.
+  induction A0.
+  - right. intros B C N. inversion N.
+  - right. intros B C N. inversion N.
+  - right. intros B C N. inversion N.
+  - right. intros B C N. inversion N.
+  - left. exists (A0_1,A0_2). reflexivity.
+  - right. intros B C N. inversion N.
+Defined.
+
+
+Lemma decidable_impl_and : forall A0, { '(B, C, D) | A0 = (B ∧ C) ⇒ D } + { forall B C D, A0 <> (B ∧ C) ⇒ D }.
+Proof.
+  intro A0.
+  induction A0.
+  - right. intros B C D N. inversion N.
+  - right. intros B C D N. inversion N.
+  - right. intros B C D N. inversion N.
+  - right. intros B C D N. inversion N.
+  - right. intros B C D N. inversion N.
+  - destruct (decidable_and A0_1) as [[[B C] eq] | BAD].
+    + left. exists (B, C, A0_2). rewrite eq. reflexivity.
+    + right. intros B C D. intro N. inversion N. apply (BAD B C). assumption.
+Defined.
+
+Lemma decidable_impl_or : forall A0, { '(B, C, D) | A0 = (B ∨ C) ⇒ D } + { forall B C D, A0 <> (B ∨ C) ⇒ D }.
+Proof.
+  intro A0.
+  induction A0.
+  - right. intros B C D N. inversion N.
+  - right. intros B C D N. inversion N.
+  - right. intros B C D N. inversion N.
+  - right. intros B C D N. inversion N.
+  - right. intros B C D N. inversion N.
+  - destruct (decidable_or A0_1) as [[[B C] eq] | BAD].
+    + left. exists (B, C, A0_2). rewrite eq. reflexivity.
+    + right. intros B C D. intro N. inversion N. apply (BAD B C). assumption.
+Defined.
+
+Lemma decidable_impl : forall A0, { '(B, C) | A0 = (B ⇒ C) } + { forall B C, A0 <> (B ⇒ C) }.
+Proof.
+  intro A0.
+  induction A0.
+  - right. intros B C N. inversion N.
+  - right. intros B C N. inversion N.
+  - right. intros B C N. inversion N.
+  - right. intros B C N. inversion N.
+  - right. intros B C N. inversion N.
+  - left. exists (A0_1, A0_2). reflexivity.
+Defined.
+ 
+
+Lemma decidable_impl_impl : forall A0, { '(B, C, D) | A0 = (B ⇒ C) ⇒ D } + { forall B C D, A0 <> (B ⇒ C) ⇒ D }.
+Proof.
+  intro A0.
+  induction A0.
+  - right. intros B C D N. inversion N.
+  - right. intros B C D N. inversion N.
+  - right. intros B C D N. inversion N.
+  - right. intros B C D N. inversion N.
+  - right. intros B C D N. inversion N.
+  - destruct (decidable_impl A0_1) as [[[B C] eq] | BAD].
+    + left. exists (B, C, A0_2). rewrite eq. reflexivity.
+    + right. intros B C D. intro N. inversion N. apply (BAD B C). assumption.
+Defined.
