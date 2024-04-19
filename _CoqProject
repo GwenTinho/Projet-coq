@@ -1,0 +1,9 @@
+-Q theories LIDec
+-arg -w -arg -notation-overridden
+
+theories/base.v
+theories/misc.v
+theories/listSplitting.v
+theories/introRules.v
+theories/elimRules.v
+theories/decider.v
