@@ -2,9 +2,12 @@ From LIDec Require Import base.
 From LIDec Require Import listSplitting.
 From LIDec Require Import misc.
 From LIDec Require Import introRules.
+From LIDec Require Import elimRules.
+From LIDec Require Import strongInduction.
 Require Import List.
 
 Import ListNotations.
+Require Import ZArith Psatz.
 
 (* On pourra avoir envie de définir le lemme suivant, qui est le
    pendant dans Set du lemme in_split de la bibliothèque standard :
@@ -34,86 +37,92 @@ Section LI_Decidable.
      Ne pas hésiter à écrire des lemmes intermédiaires auparavant
      pour vérifier l’applicabilité de chaque règle. *)
 
-
-
-
-
-Lemma provable_with_IE_bot :
-  (Γ ⊢ A) + { forall (p : LI S),
-        match p return Prop with IE_bot => False | _ => True end }.
-Proof.
-  destruct (in_dec_formula ⊥ Γ) as [bot_in_gamma | bot_nin_gamma].
-  - left. apply in_split_formula in bot_in_gamma.
-    destruct bot_in_gamma as [(pre, post) eq].
-    simpl in eq.
-    rewrite eq.
-    apply IE_bot.
-  - right. intro p.
-    assert (let '(Γ ⊢? A) := S in ~ In ⊥ Γ) as bot_nin_ctx_S.
-    {
-      destruct S. assumption.
-    }
-    destruct p; trivial.
-    apply bot_nin_ctx_S.
-    apply in_or_app.
-    right.
-    apply in_or_app.
-    left.
-    simpl.
-    auto.
-Defined.
-
-
-Lemma decidable_and : forall A0, { '(B, C) | A0 = B ∧ C } + { forall B C, A0 <> B ∧ C }.
-Proof.
-  intro A0.
-  induction A0.
-  - right. intros B C N. inversion N.
-  - right. intros B C N. inversion N.
-  - right. intros B C N. inversion N.
-  - left. exists (A0_1,A0_2). reflexivity.
-  - right. intros B C N. inversion N.
-  - right. intros B C N. inversion N.
-Defined.
-
-Ltac dec A B L R:= specialize (formula_eq_dec A B) as [L |  R].
-
-Ltac dec_list Γ Γ' L R := specialize (context_eq_dec Γ Γ') as [L | R].
-
-Lemma provable_with_IE_and :
-   (Γ ⊢ A) +
-  { forall (p : LI S),
-        match p with
-        | IE_and _ => False
-        | _ => True
-        end
-  }.
-Proof.
-  specialize (list_split_ind_dec formula ({'(h,x,k, B, C) | h ++ [x] ++ k = Γ /\ x = B ∧ C }) (fun a y b => forall B C, y <> B ∧ C) Γ formula_eq_dec) as H.
+  Ltac finish := left; destruct S; auto.
   
-
-
-Admitted.
-
-
-
-
-
   Lemma is_provable_rec :
     (Γ ⊢ A) + { notT (Γ ⊢ A) }.
   Proof.
-
-
-Admitted.
+    Search "provable".
+    specialize ( provable_with_I_ax S IH) as [G | B_I_Ax]. {finish. }
+    specialize ( provable_with_II_top S IH) as [G | B_I_Top]. {finish. }
+    specialize ( provable_with_II_and S IH) as [G | B_I_And]. {finish. }
+    specialize ( provable_with_II_or_left S IH) as [G | B_I_Or_Left]. {finish. }    
+    specialize ( provable_with_II_or_right S IH) as [G | B_I_Or_Right]. {finish. }
+    specialize ( provable_with_II_impl S IH) as [G | B_I_Impl]. {finish. }
+    specialize ( provable_with_IE_bot S IH) as [G | B_E_Bot]. {finish. }
+    specialize ( provable_with_IE_and S IH) as [G | B_E_And]. {finish. }    
+    specialize ( provable_with_IE_or S IH) as [G | B_E_Or]. {finish. }      
+    specialize ( provable_with_IE_impl_top S IH) as [G | B_E_Impl_Top]. {finish. }
+    specialize ( provable_with_IE_impl_left S IH) as [G | B_E_Impl_Left]. {finish. }
+    specialize ( provable_with_IE_impl_right S IH) as [G | B_E_Impl_Right]. {finish. }
+    specialize ( provable_with_IE_impl_and S IH) as [G | B_E_Impl_And]. {finish. }
+    specialize ( provable_with_IE_impl_or S IH) as [G | B_E_Impl_Or]. {finish. }
+    specialize ( provable_with_IE_impl_impl S IH) as [G | B_E_Impl_Impl]. {finish. }
+    right.
+    intro p.
+    assert (S = (Γ ⊢? A)).
+    { destruct S. auto. }
+    rewrite <- H in p.
+    specialize (B_I_Ax p).
+    specialize (B_I_And p).
+    specialize (B_I_Or_Left p).
+    specialize (B_I_Or_Right p).
+    specialize (B_I_Impl p).
+    specialize (B_I_Top p).
+    specialize (B_E_Impl_And p).
+    specialize (B_E_Impl_Impl p).
+    specialize (B_E_Impl_Or p).
+    specialize (B_E_Impl_Right p).
+    specialize (B_E_Impl_Left p).
+    specialize (B_E_Impl_Top p).
+    specialize (B_E_And p).
+    specialize (B_E_Or p).
+    specialize (B_E_Bot p).
+    destruct S.
+    destruct p; assumption.
+Defined.
 
 End LI_Decidable.
+
+
+
+Definition SI_Prop (n : nat) := forall Γ A, deg_sequent (Γ ⊢? A) = n -> (Γ ⊢ A) + { notT (Γ ⊢ A) }.
+
+Lemma SI_IH : forall m : nat, (forall n0 : nat, n0 < m -> SI_Prop n0) -> SI_Prop m.
+Proof.
+  intros m H.
+  unfold SI_Prop in *.
+  intros Γ A H0.
+  specialize (is_provable_rec (Γ ⊢? A)) as H1.
+  simpl in *.
+  apply H1.
+  intros Γ' A' H2.
+  rewrite H0 in H2.
+  specialize (H (deg_sequent (Γ' ⊢? A')) H2 Γ' A').
+  assert (deg_context Γ' + deg A' = deg_sequent (Γ' ⊢? A')).
+  { reflexivity. }
+  apply H in H3.
+  assumption.
+Defined.
 
 Lemma is_provable :
   forall s,
   let '(Γ ⊢? A) := s in
   (Γ ⊢ A) + { notT (Γ ⊢ A) }.
 Proof.
-Admitted.
+  intro s.
+  induction s.
+  remember (deg_sequent (Γ ⊢? A)) as n.
+  generalize dependent Γ.
+  generalize dependent A.
+  
+  specialize (strong_induction SI_Prop SI_IH) as IH.
+  unfold SI_Prop in IH.
+  intros A Γ Heqn.
+  apply IH with n.
+  symmetry.
+  assumption.
+Defined.
 
 (* Pour écrire plus facilement les tests, on oublie les preuves et on
    réduit la réponse du prouveur à un booléen. *)

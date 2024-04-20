@@ -226,6 +226,70 @@ Defined.
 
 
 
+Definition Q_impl_top (A : formula)  (l0 : list formula) (A0 : formula) (l1 : list formula) :=
+ forall B, (A0 = (⊤ ⇒ B )-> notT (l0 ++ [B] ++ l1 ⊢ A)).
+
+Lemma f_impl_top : forall  l0 A0 l1, l0 ++ [A0] ++ l1= Γ -> (Γ ⊢ A) + { Q_impl_top A l0 A0 l1 }.
+Proof.
+  intros l0 A0 l1 eq.
+  unfold Q_impl_top.
+  specialize (decidable_impl_top A0) as [[B eq0] | Bad].
+  -  specialize (deg_IE_impl_top l0 B l1 A) as Deg.
+    rewrite eq0 in eq.
+    rewrite <- eq in IH.
+    apply IH in Deg.
+    destruct Deg as [L | R].
+    + rewrite <- eq.
+      left.
+      apply IE_impl_top; assumption.
+    + right.
+      destruct S.
+      intros B0 H.
+      subst.
+      inversion H.
+      congruence.
+  - right.
+    intros B H N.
+    apply (Bad B).
+    assumption.
+Defined.
+
+Lemma pre_IE_impl_top : (Γ ⊢ A) + {
+      forall l0 A0 l1, l0 ++ [A0] ++ l1 = Γ -> Q_impl_top A l0 A0 l1}.
+Proof.
+  specialize (list_split_ind  formula (Γ ⊢ A)  (Q_impl_top A) Γ f_impl_top) as [Fine | NotFine].
+  - left. assumption.
+  - right.
+    intros l0 A0 l1 H.
+    apply NotFine.
+    assumption.
+Defined.
+
+Lemma provable_with_IE_impl_top :
+   (Γ ⊢ A) +
+  { forall (p : LI S),
+        match p with
+        | IE_impl_top _ => False
+        | _ => True
+        end
+  }.
+Proof.
+  specialize pre_IE_impl_top as [Done | Workie].
+  -  left. assumption.
+  - right.
+    s_struct.
+    destruct p; trivial.
+    unfold Q_impl_top in Workie.
+    specialize (Workie Γ0 (⊤ ⇒ A0)  Γ').
+    assert (Γ0 ++ [⊤ ⇒ A0] ++ Γ' = Γ).
+    { auto. }
+    specialize (Workie H A0).
+    apply Workie.
+    + reflexivity.
+    + auto.
+Defined.
+
+
 Definition Q_impl_and (A : formula)  (l0 : list formula) (A0 : formula) (l1 : list formula) :=
   (forall B C D, A0 = ((B ∧ C) ⇒ D )-> notT (l0 ++ [B ⇒ C ⇒ D] ++ l1 ⊢ A)).
 
@@ -367,7 +431,7 @@ Proof.
 Defined.
 
 Definition Q_impl_impl (A : formula)  (l0 : list formula) (A0 : formula) (l1 : list formula) :=
-  (forall B C D, A0 = ((B ⇒  C) ⇒ D )-> notT (l0 ++ [B; C ⇒ D] ++ l1 ⊢ A)).
+  (forall B C D, A0 = ((B ⇒  C) ⇒ D )-> notT (l0 ++ [B; C ⇒ D] ++ l1 ⊢ C) \/ notT (l0 ++ [D] ++ l1 ⊢ A)).
 
 Lemma f_impl_impl : forall  l0 A0 l1, l0 ++ [A0] ++ l1= Γ -> (Γ ⊢ A) + { Q_impl_impl A l0 A0 l1 }.
 Proof.
@@ -388,20 +452,24 @@ Proof.
       rewrite H in eq0.
       inversion eq0.
       subst.
-      admit.
+      right. assumption.
     + right.
       intros B0 C0 D0 H.
       subst.
       inversion H.
+      left. congruence.
+    + right. intros B0 C0 D0 H.
       subst.
-      admit.
-    + admit.
+      inversion H.
+      right.
+      rewrite <- H3.
+      assumption.
   - right.
     intros B C D H.
     subst.
     specialize (Neg B C D) as K.
     contradiction.
-Admitted.
+Defined.
 
 
 Lemma pre_IE_impl_impl : (Γ ⊢ A) + {
@@ -438,10 +506,15 @@ Proof.
     }
     symmetry in H.
     simpl in H.
-    apply (Workie H A0 B C).
-    + reflexivity.
-    + admit.
-Admitted.
+    specialize (Workie H A0 B C) as K.
+    assert ( (A0 ⇒ B) ⇒ C = (A0 ⇒ B) ⇒ C).
+    {reflexivity. }
+    apply Workie in H0.
+    + destruct H0 as [L | R].
+      * apply L. simpl in p1. assumption.
+      * apply R. simpl in p2. assumption.
+    + assumption.
+Defined.
 
 
 (*
@@ -456,18 +529,202 @@ Proof.
     assumption.
 Defined.
 *)
+(*Idea : Same setup as for the others, but in two steps, first implement Q_impl*)
+
+Definition Q_impl_left (A : formula)  (l1 : list formula) (A0 : formula) (l2 : list formula) :=
+  (forall l r B C , A0 = (B ⇒  C ) -> (l1 = l ++ [B] ++ r) -> notT (l ++ [B] ++ r ++ [C] ++ l2 ⊢ A)).
+
+
+Lemma f_impl_left : forall  l0 A0 l1, l0 ++ [A0] ++ l1= Γ -> (Γ ⊢ A) + { Q_impl_left A l0 A0 l1 }.
+Proof.
+  intros l0 A0 l1 eq.
+  unfold Q_impl_left.
+  specialize (decidable_impl A0) as [[[B C] eq0] | Neg].
+  specialize (in_dec_formula B l0) as [Bin | Bnin].
+  - apply in_split_formula in Bin.
+    destruct Bin as [[l r] eq1].
+    simpl in eq1.
+    specialize (deg_IE_impl_left l B r C l1 A) as Deg.
+    rewrite eq0 in eq.
+    rewrite eq1 in eq.
+    rewrite <- eq in IH.
+    assert (l ++ [B] ++ r ++ [B ⇒ C] ++ l1 = (l ++ B :: r) ++ [B ⇒ C] ++ l1 ).
+    {
+      repeat rewrite <- app_assoc.
+      reflexivity.
+    }
+    rewrite <- H in IH.
+    apply IH in Deg.
+    destruct Deg as [L | R].
+    + rewrite <- eq.
+      left.
+      rewrite <- H.
+      apply IE_impl_left; assumption.
+    + right.
+      destruct S.
+      intros l2 r0 B0 C0 H0.
+      rewrite H0 in eq0.
+      inversion eq0.
+      subst.
+      intro eq1.
+      assert (l ++ [B] ++ r ++ [C] ++ l1 = l2 ++ [B] ++ r0 ++ [C] ++ l1).
+      {
+        simpl.
+        simpl in eq1.
+        assert (l ++ B :: r ++ C :: l1 = (l ++ B :: r) ++ C :: l1).
+        {
+          rewrite <- app_assoc.
+          reflexivity.
+        }
+        rewrite H0.
+        rewrite eq1.
+        rewrite <- app_assoc.
+        reflexivity.
+      }
+      rewrite <- H0.
+      assumption.
+  - right.
+    intros l r B0 C0 H H0.
+    subst.
+    inversion H.
+    subst.
+    intro N.
+    apply Bnin.
+    apply in_or_app.
+    right.
+    simpl.
+    left. reflexivity.
+  - right.
+    intros l r B C H H0 N.
+    apply (Neg B C).
+    assumption.
+Defined.
+
+
+Lemma pre_IE_impl_left : (Γ ⊢ A) + {
+      forall l0 A0 l1, l0 ++ [A0] ++ l1 = Γ -> Q_impl_left A l0 A0 l1}.
+Proof.
+  specialize (list_split_ind  formula (Γ ⊢ A)  (Q_impl_left A) Γ f_impl_left) as [Fine | NotFine].
+  - left. assumption.
+  - right.
+    intros l0 A0 l1 H.
+    apply NotFine.
+    assumption.
+Defined.
+
 
 Lemma provable_with_IE_impl_left :
    (Γ ⊢ A) +
   { forall (p : LI S),
         match p with
-        | IE_impl_left _ _ => False
+        | IE_impl_left _ => False
         | _ => True
         end
   }.
 Proof.
+  specialize pre_IE_impl_left as [Done | Workie].
+  -  left. assumption.
+  - right.
+    s_struct.
+    destruct p; trivial.
+    unfold Q_impl_left in Workie.
+    specialize (Workie (Γ0 ++ [A0] ++ Γ') (A0 ⇒ B) Γ'').
+    assert ((Γ0 ++ [A0] ++ Γ') ++ [A0 ⇒ B] ++ Γ'' = Γ).
+    {
+      repeat rewrite <- app_assoc.
+      auto.
+    }
+    apply (Workie H Γ0 Γ' A0 B); try reflexivity.
+    auto.
+Defined.
 
-Admitted.
+Definition Q_impl_right (A : formula)  (l1 : list formula) (A0 : formula) (l2 : list formula) :=
+  (forall l r B C , A0 = (B ⇒  C ) -> (l2 = l ++ [B] ++ r) -> notT (l1 ++ [C] ++ l ++ [B] ++ r ⊢ A)).
+
+
+Lemma f_impl_right : forall  l0 A0 l1, l0 ++ [A0] ++ l1= Γ -> (Γ ⊢ A) + { Q_impl_right A l0 A0 l1 }.
+Proof.
+  intros l0 A0 l1 eq.
+  unfold Q_impl_right.
+  specialize (decidable_impl A0) as [[[B C] eq0] | Neg].
+  specialize (in_dec_formula B l1) as [Bin | Bnin].
+  - apply in_split_formula in Bin.
+    destruct Bin as [[l r] eq1].
+    simpl in eq1.
+    specialize (deg_IE_impl_right l0 B l C r A) as Deg.
+    rewrite eq0 in eq.
+    rewrite eq1 in eq.
+    rewrite <- eq in IH.
+    simpl in Deg, IH.
+    apply IH in Deg.
+    destruct Deg as [L | R].
+    + rewrite <- eq.
+      left.
+      apply IE_impl_right; assumption.
+    + right.
+      intros l2 r0 B0 C0 H H0.
+      subst.
+      inversion H.
+      subst.
+      simpl in *.
+      rewrite <- H0.
+      assumption.
+  - right.
+    intros l r B0 C0 H H0.
+    subst.
+    inversion H.
+    subst.
+    intro N.
+    apply Bnin.
+    apply in_or_app.
+    right.
+    simpl.
+    left. reflexivity.
+  - right.
+    intros l r B C H H0 N.
+    apply (Neg B C).
+    assumption.
+Defined.
+
+
+Lemma pre_IE_impl_right : (Γ ⊢ A) + {
+      forall l0 A0 l1, l0 ++ [A0] ++ l1 = Γ -> Q_impl_right A l0 A0 l1}.
+Proof.
+  specialize (list_split_ind  formula (Γ ⊢ A)  (Q_impl_right A) Γ f_impl_right) as [Fine | NotFine].
+  - left. assumption.
+  - right.
+    intros l0 A0 l1 H.
+    apply NotFine.
+    assumption.
+Defined.
+
+
+Lemma provable_with_IE_impl_right :
+   (Γ ⊢ A) +
+  { forall (p : LI S),
+        match p with
+        | IE_impl_right _ => False
+        | _ => True
+        end
+  }.
+Proof.
+  specialize pre_IE_impl_right as [Done | Workie].
+  -  left. assumption.
+  - right.
+    s_struct.
+    destruct p; trivial.
+    unfold Q_impl_right in Workie.
+    specialize (Workie Γ0 (A0 ⇒ B) (Γ' ++ [A0] ++ Γ'')).
+    assert (Γ0 ++ [A0 ⇒ B] ++ Γ' ++ [A0] ++ Γ'' = Γ).
+    {
+      auto.
+    }
+    apply (Workie H Γ' Γ'' A0 B); try reflexivity.
+    auto.
+Defined.
+
+
+
 
 
 End ElimRules.

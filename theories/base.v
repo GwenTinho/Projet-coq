@@ -690,7 +690,22 @@ Proof.
   - right. intros B C N. inversion N.
   - left. exists (A0_1, A0_2). reflexivity.
 Defined.
- 
+
+Lemma decidable_impl_top : forall A0, { '(B) | A0 = (⊤ ⇒ B) } + { forall B, A0 <> (⊤ ⇒ B) }.
+Proof.
+  intro A0.
+  induction A0.
+  - right. intros B N. inversion N.
+  - right. intros B N. inversion N.
+  - right. intros B N. inversion N.
+  - right. intros B N. inversion N.
+  - right. intros B N. inversion N.
+  -specialize (formula_eq_dec A0_1 ⊤) as [eq | neq].
+    + left. exists A0_2. congruence.
+    + right. intros B N. inversion N. contradiction.
+Defined.
+
+
 
 Lemma decidable_impl_impl : forall A0, { '(B, C, D) | A0 = (B ⇒ C) ⇒ D } + { forall B C D, A0 <> (B ⇒ C) ⇒ D }.
 Proof.

@@ -1,11 +1,10 @@
+From LIDec Require Import base.
+From LIDec Require Import decider.
+Require Import List.
 
-(* Pour écrire plus facilement les tests, on oublie les preuves et on
-   réduit la réponse du prouveur à un booléen. *)
-Definition is_provable_bool '(Γ ⊢? A) : bool :=
-  if is_provable (Γ ⊢? A) then
-    true
-  else
-    false.
+Import ListNotations.
+
+Require Import String.
 
 (* On se donne quelques variables. *)
 Definition A := Var "A"%string.
@@ -17,12 +16,13 @@ Definition C := Var "C"%string.
 (* Et on teste le prouveur sur les propositions du TD 1. *)
 Lemma A_imp_A : is_provable_bool ([] ⊢? A ⇒ A) = true.
 Proof.
-Admitted.
+  reflexivity.
+Qed.
 
 Lemma imp_trans : is_provable_bool ([] ⊢? (A ⇒ B) ∧ (B ⇒ C) ⇒ (A ⇒ C)) = true.
 Proof.
-  reflexivity.
-Qed.
+
+Admitted.
 
 Definition equiv A B := (A ⇒ B) ∧ (B ⇒ A).
 
