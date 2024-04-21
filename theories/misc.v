@@ -13,7 +13,7 @@ Proof.
     apply Hrev in H.
     repeat rewrite rev_involutive in H.
     assumption.
-Qed.
+Defined.
 
 
 Lemma app_inv_tail : forall A, forall l l' r : list A, l ++ r = l' ++ r -> l = l'.
@@ -24,7 +24,7 @@ Proof.
   apply app_inv_head in H.
   rewrite <- rev_bij in H.
   assumption.
-Qed.
+Defined.
 
 
 
@@ -37,7 +37,7 @@ Qed.
     apply IHA2.
     rewrite H1.
     assumption.
-  Qed.
+  Defined.
 
   Lemma weird_right : forall A B, notT (A ∧ B = A).
   Proof.
@@ -46,7 +46,7 @@ Qed.
     apply IHA1.
     rewrite H2.
     assumption.
-  Qed.
+  Defined.
 
   Lemma weird_or_left : forall A B, notT (B ∨ A = A).
   Proof.
@@ -55,7 +55,7 @@ Qed.
     apply IHA2.
     rewrite H1.
     assumption.
-  Qed.
+  Defined.
 
 
   Lemma weird_or_right : forall A B, notT (A ∨ B = A).
@@ -65,4 +65,4 @@ Qed.
     apply IHA1.
     rewrite H2.
     assumption.
-  Qed.
+  Defined.

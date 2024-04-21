@@ -46,25 +46,13 @@ sorte qu’on puisse réduire ce lemme lors des calculs. *)
    suivant, qui sait chercher une preuve (P) mettant en jeu un élément
    distingué dans une liste (en particulier, une formule dans un
    contexte), ou conclure (Q) qu’il n’en existe pas. *)
-Lemma tl_is_empty : forall A (l : list A), tl l = [] -> (exists x, l = [x]) \/ l = [].
-Proof.
-  intros A l.
-  induction l.
-  - intro H.
-    right. reflexivity.
-  - intro H.
-    left.
-    exists a.
-    f_equal.
-    simpl in H.
-    assumption.
-Qed.
+
 
 Lemma list_factor_empty : forall {A}  (l0 l1 : list A) (a : A), l0 ++ a :: l1 <> [].
 Proof.
   intros A l0 l1 a Neg.
   induction l0; inversion Neg.
-Qed.
+Defined.
 
 Ltac kill_empty := match goal with
                        | H : (?l0 ++ ?a :: ?l1 = []) |-  _  => (apply list_factor_empty in H; contradiction)
@@ -84,18 +72,6 @@ Ltac kill_empty := match goal with
         intro N. inversion N.
    Defined.
 
-Lemma In_fi_split_dec : forall {A}(eq_dec : forall x y : A, {x = y}+{x <> y}) {x : A} {l : list A},
-    {'(l0, l1) | l = l0 ++ [x] ++ l1} -> In x l.
-Proof.
-  intros A eq_dec x l [[pre post] eq].
-  rewrite eq.
-  apply in_or_app.
-  right.
-  apply in_or_app.
-  left.
-  simpl.
-  auto.
-Qed.
 
 Lemma in_exists : forall {A} (l : list A), l <> [] -> {'(x) | In x l}.
 Proof.
@@ -103,7 +79,7 @@ Proof.
   induction l.
   - contradiction.
   - exists a. simpl. auto.
-Qed.
+Defined.
 
 
 Lemma split_dec : forall {A} (eq_dec : forall x y : A, {x = y} + {x <> y}) (l : list A),
@@ -120,7 +96,7 @@ Proof.
     simpl in eq.
     exists (a,x,b).
     auto.
-Qed.
+Defined.
 
 
 
@@ -216,7 +192,7 @@ Proof.
   induction Γ.
   - reflexivity.
   - unfold deg_context in H. simpl in H. specialize (deg_at_least_two a). lia.
-Qed.
+Defined.
 
 
 Definition context_eq_dec := list_eq_dec formula_eq_dec.
@@ -241,7 +217,7 @@ Proof.
     right.
     simpl.
     auto.
-Qed.
+Defined.
 
 Lemma context_split_ex : forall Γ : list formula, Γ <> [] ->  {'(Γ',Γ'', A) | Γ' ++ [A] ++ Γ'' = Γ}.
 Proof.
@@ -256,13 +232,3 @@ Proof.
       exists (a::l,r, A). rewrite <- eq. reflexivity.
 Defined.
 
-
-Lemma decidable_start_of_context : forall (A : formula) Γ, Γ <> [] -> { 'Δ | Γ = A :: Δ } +  { forall Δ, notT (Γ = A :: Δ) } .
-Proof.
-  intros A Γ H.
-  destruct Γ.
-  - contradiction.
-  - specialize (formula_eq_dec A f) as [Eq | Neq].
-    + left. exists Γ. subst. easy.
-    + right. intros Δ N. inversion N. auto.
-Qed.

@@ -21,8 +21,8 @@ Qed.
 
 Lemma imp_trans : is_provable_bool ([] ⊢? (A ⇒ B) ∧ (B ⇒ C) ⇒ (A ⇒ C)) = true.
 Proof.
-
-Admitted.
+  reflexivity.
+Qed.
 
 Definition equiv A B := (A ⇒ B) ∧ (B ⇒ A).
 

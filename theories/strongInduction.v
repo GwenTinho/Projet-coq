@@ -1,44 +1,35 @@
 (*Adapted from https://github.com/tchajed/strong-induction/blob/master/StrongInduction.v*)
 
 Require Import PeanoNat.
-Require Import ZArith Psatz.
 
-Section StrongInduction.
-
-  Variable P:nat -> Set.
-
-  (** The stronger inductive hypothesis given in strong induction. The standard
-  [nat ] induction principle provides only n = pred m, with [P 0] required
-  separately. *)
-  Hypothesis IH : forall m, (forall n, n < m -> P n) -> P m.
-
-
-  Hint Resolve le_S_n.
-
-  (** * Strengthen the induction hypothesis. *)
-
-  Local Lemma strong_induction_all : forall n,
-      (forall m, m <= n -> P m).
+  Theorem strong_induction : forall P : nat -> Set, forall IH : forall m, (forall n, n < m -> P n) -> P m, forall p, P p.
   Proof.
-    intro n.
-    induction n.
-    - intros m H.
-      rewrite Nat.le_0_r in H.
-      apply IH.
+    intros P IH p.
+    assert ( forall n,
+               (forall m, m <= n -> P m)).
+    {
+      intro n.
+      induction n.
+      - intros m H.
+        rewrite Nat.le_0_r in H.
+        apply IH.
+        intros n H0.
+        subst.
+        apply Nat.nlt_0_r in H0.
+        contradiction.
+      - intros m H.
+        apply IH.
+        intros n0 H0.
+        apply IHn.
+        apply le_S_n.
+        apply Nat.le_trans with m; assumption.
+    }
+    induction p.
+    - apply IH.
       intros n H0.
-      subst.
       apply Nat.nlt_0_r in H0.
       contradiction.
-    - intros m H.
-      apply IH.
-      intros n0 H0.
-      apply IHn.
-      lia.
+    - apply H with (n := S p).
+      apply Nat.le_refl.
   Defined.
 
-  Theorem strong_induction : forall n, P n.
-  Proof.
-    eauto using strong_induction_all.
-  Defined.
-
-End StrongInduction.

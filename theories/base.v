@@ -152,7 +152,7 @@ Proof.
   intro A.
   induction A;
     simpl; lia.
-Qed.
+Defined.
 
 
 (* On prouvera des propriétés sur les degrés des conjonctions et
@@ -184,25 +184,25 @@ Proof.
     destruct B; lia.
   - lia.
     * lia.
-Qed.
+Defined.
 
 Lemma deg_or_intro_left : forall A B, deg A < deg (A ∨ B).
 Proof.
   intros A B.
   induction A; simpl; lia.
-Qed.
+Defined.
 
 Lemma deg_or_intro_right : forall A B, deg B < deg (A ∨ B).
 Proof.
   intros A B.
   induction A; simpl; lia.
-Qed.
+Defined.
 
 Lemma deg_IE_bot : forall Γ, deg_sequent (Γ ⊢? ⊥) >= deg_sequent ([] ⊢? ⊥).
 Proof.
   intros Γ.
   simpl. lia.
-Qed.
+Defined.
 
 
 Lemma deg_II_or_left : forall Γ A B, deg_sequent (Γ ⊢? A) < deg_sequent (Γ ⊢? A ∨ B).
@@ -215,7 +215,7 @@ Proof.
   - simpl. lia.
   - unfold deg_sequent, deg_context in *. simpl in *.
     lia.
-Qed.
+Defined.
 
 
 Lemma deg_II_or_right : forall Γ A B, deg_sequent (Γ ⊢? B) < deg_sequent (Γ ⊢? A ∨ B).
@@ -228,7 +228,7 @@ Proof.
   - simpl. lia.
   - unfold deg_sequent, deg_context in *. simpl in *.
     lia.
-Qed.
+Defined.
 
 
 (* On prouvera que les prémisses des règles ont des degrés plus petits
@@ -261,7 +261,7 @@ Proof.
     unfold deg_context in IHΓ0.
     simpl in IHΓ0.
     lia.
-Qed.
+Defined.
 
 Lemma deg_II_and_left :  forall  Γ A B,
     deg_sequent (Γ  ⊢? A) < deg_sequent (Γ ⊢? A ∧ B).
@@ -274,7 +274,7 @@ Proof.
     specialize (deg_at_least_two B).
     specialize (deg_at_least_two a).
     nia.
-Qed.
+Defined.
 
 Lemma deg_II_and_right :   forall  Γ A B,
     deg_sequent (Γ  ⊢? B) < deg_sequent (Γ ⊢? A ∧ B).
@@ -287,7 +287,7 @@ Proof.
     specialize (deg_at_least_two B).
     specialize (deg_at_least_two a).
     nia.
-Qed.
+Defined.
 
 
 Lemma deg_IE_or_left :
@@ -308,7 +308,7 @@ Proof.
     simpl.
     simpl in IHΓ0.
     lia.
-Qed.
+Defined.
 
 Lemma deg_IE_or_right :
   forall Γ0 A B Γ1 C,
@@ -328,7 +328,7 @@ Proof.
     simpl.
     simpl in IHΓ0.
     lia.
-Qed.
+Defined.
 
 Lemma deg_II_impl :
   forall Γ A B,
@@ -347,7 +347,7 @@ Proof.
     unfold deg_sequent, deg_context.
     simpl.
     lia.
-Qed.
+Defined.
 
 Lemma deg_context_app : forall Γ1 Γ2, deg_context (Γ1 ++ Γ2) = deg_context Γ1 + deg_context Γ2.
 Proof.
@@ -356,7 +356,7 @@ Proof.
   rewrite map_app.
   rewrite list_sum_app.
   reflexivity.
-Qed.
+Defined.
 
 Lemma deg_sequent_app : forall Γ1 Γ2 A, deg_sequent (Γ1 ++ Γ2 ⊢? A ) = deg_context Γ1 + deg_context Γ2 + deg A.
 Proof.
@@ -364,7 +364,7 @@ Proof.
   simpl.
   rewrite deg_context_app.
   reflexivity.
-Qed.
+Defined.
 
 Lemma deg_context_element : forall A, deg_context [A] = deg A.
 Proof.
@@ -372,7 +372,7 @@ Proof.
   unfold deg_context.
   simpl.
   lia.
-Qed.
+Defined.
 
 Lemma deg_context_cons : forall A B, deg_context [A;B] = deg A + deg B.
 Proof.
@@ -380,7 +380,7 @@ Proof.
   unfold deg_context.
   simpl.
   lia.
-Qed.
+Defined.
 
 Lemma deg_IE_impl_left :
   forall Γ A Γ' B Γ'' C,
@@ -409,7 +409,7 @@ Proof.
     + repeat rewrite deg_sequent_app in *.
       repeat rewrite deg_context_app in *.
       unfold deg_context in *. simpl in *. lia.
-Qed.
+Defined.
 
 Lemma deg_IE_impl_right :
   forall Γ A Γ' B Γ'' C,
@@ -438,7 +438,7 @@ Proof.
     + repeat rewrite deg_sequent_app in *.
       repeat rewrite deg_context_app in *.
       unfold deg_context in *. simpl in *. lia.
-Qed.
+Defined.
 
 Lemma deg_IE_impl_top :
   forall Γ A Γ' B,
@@ -453,7 +453,7 @@ Proof.
   + repeat rewrite deg_sequent_app in *.
     unfold deg_context in *. simpl in *.
     lia.
-Qed.
+Defined.
 
 Lemma deg_IE_impl_and :
   forall Γ A B C Γ' D,
@@ -484,7 +484,7 @@ Proof.
     unfold deg_context in *.
     simpl in *.
     lia.
-Qed.
+Defined.
 
 
 Lemma deg_IE_impl_or :
@@ -511,7 +511,7 @@ Proof.
     repeat rewrite deg_context_app in *.
     simpl in *.
     lia.
-Qed.
+Defined.
 
 Check deg.
 
@@ -539,7 +539,7 @@ Proof.
     apply add_lt_mono_l_proj_l2r.
     unfold deg_context. simpl.
     nia.
-Qed.
+Defined.
 
 Lemma deg_IE_impl_impl_right :
   forall Γ A B C Γ' D,
@@ -563,7 +563,7 @@ Proof.
     apply add_lt_mono_l_proj_l2r.
     unfold deg_context. simpl.
     nia.
-Qed.
+Defined.
 
  Lemma increasing_sequent_degree : forall B Γ A, deg_sequent (Γ ⊢? A) < deg_sequent ((B :: Γ) ⊢? A).
   Proof.
@@ -573,7 +573,7 @@ Qed.
     simpl.
     specialize (deg_at_least_two B).
     lia.
-  Qed.
+  Defined.
 
 Lemma deg_context_geq_O : forall Γ, deg_context Γ >= 0.
 Proof.
@@ -582,7 +582,7 @@ Proof.
   - lia.
   - specialize (deg_at_least_two a).
     intro H. simpl. lia.
-Qed.
+Defined.
 
 Lemma deg_sequent_geq_two : forall Γ A, deg_sequent (Γ ⊢? A) >= 2.
 Proof.
@@ -592,7 +592,7 @@ Proof.
   specialize (deg_at_least_two A).
   intros H H0.
   lia.
-Qed.
+Defined.
 
 
 
