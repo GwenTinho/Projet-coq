@@ -4,14 +4,12 @@ Require Import List.
 
 Import ListNotations.
 
-Require Import String.
-
 (* On se donne quelques variables. *)
-Definition A := Var "A"%string.
+Definition A := Var 0%nat.
 
-Definition B := Var "B"%string.
+Definition B := Var 1%nat.
 
-Definition C := Var "C"%string.
+Definition C := Var 2%nat.
 
 (* Et on teste le prouveur sur les propositions du TD 1. *)
 Lemma A_imp_A : is_provable_bool ([] ⊢? A ⇒ A) = true.

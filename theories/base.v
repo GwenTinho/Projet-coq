@@ -15,13 +15,12 @@
    A, B et C. Toute la démonstration devrait fonctionner à l’identique
    si on remplace le type string par un type énuméré A, B ou C... *)
 
-Require Import String.
 Require Import ZArith Psatz.
 Require Import List.
 
 Import ListNotations.
 
-Definition var := string.
+Definition var := nat.
 
 (* Le type des formules, avec les notations associées pour plus de
    lisibilité. *)
@@ -149,53 +148,35 @@ Hint Unfold deg_sequent : core.
 (* On prouvera que toute formule a un degré supérieur ou égal à 2. *)
 Lemma deg_at_least_two : forall A, deg A >= 2.
 Proof.
-  intro A.
-  induction A;
-    simpl; lia.
+  intro A. induction A; simpl; lia.
 Defined.
 
+Ltac deg_two var name := specialize (deg_at_least_two var) as name.
 
 (* On prouvera des propriétés sur les degrés des conjonctions et
    disjonctions. *)
 Lemma deg_and_sum : forall A B, deg A + deg B < deg (A ∧ B).
 Proof.
   intros A B.
-  induction A; try (simpl;
-    induction B;
-                    simpl; lia).
-  + simpl in IHA1, IHA2.
-    simpl. lia.
-  + simpl in IHA1, IHA2.
-    simpl. lia.
-  + simpl. simpl in IHA1, IHA2.
-    Search (?k + ?n < ?k  + ?m).
-    apply Arith_prebase.lt_n_S_stt.
-    Search (?a + ?b = ?b + ?a).
-    rewrite Nat.add_comm.
-    apply Nat.add_lt_mono_l.
-    Search (?a * ?m < ?a * ?n).
-    Search ((?n * ?m) * ?p = ?n * (?m * ?p)).
-    rewrite Arith_prebase.mult_assoc_reverse_stt.
-    apply Mult.mult_lt_compat_l_stt.
-    * Search (?a < ?a + ?b ).
-      Search (?a < ?b -> ?b < ?c -> ?a < ?c).
-      apply Nat.lt_trans with (deg A2 + deg B).
-  - apply Nat.lt_add_pos_r.
-    destruct B; lia.
-  - lia.
-    * lia.
+  deg_two A H.
+  deg_two B H0.
+  simpl. nia.
 Defined.
 
 Lemma deg_or_intro_left : forall A B, deg A < deg (A ∨ B).
 Proof.
   intros A B.
-  induction A; simpl; lia.
+  deg_two A H.
+  deg_two B H0.
+  simpl. lia.
 Defined.
 
 Lemma deg_or_intro_right : forall A B, deg B < deg (A ∨ B).
 Proof.
   intros A B.
-  induction A; simpl; lia.
+  deg_two A H.
+  deg_two B H0.
+  simpl. lia.
 Defined.
 
 Lemma deg_IE_bot : forall Γ, deg_sequent (Γ ⊢? ⊥) >= deg_sequent ([] ⊢? ⊥).
@@ -205,149 +186,25 @@ Proof.
 Defined.
 
 
-Lemma deg_II_or_left : forall Γ A B, deg_sequent (Γ ⊢? A) < deg_sequent (Γ ⊢? A ∨ B).
+Lemma deg_context_geq_O : forall Γ, deg_context Γ >= 0.
 Proof.
-  intros Γ A B.
+  unfold deg_context.
+  induction Γ.
+  - lia.
+  - specialize (deg_at_least_two a).
+    intro H. simpl. lia.
+Defined.
+
+Lemma deg_sequent_geq_two : forall Γ A, deg_sequent (Γ ⊢? A) >= 2.
+Proof.
+  intros Γ A.
+  simpl.
+  specialize (deg_context_geq_O Γ).
   specialize (deg_at_least_two A).
-  specialize (deg_at_least_two B).
   intros H H0.
-  induction Γ.
-  - simpl. lia.
-  - unfold deg_sequent, deg_context in *. simpl in *.
-    lia.
+  lia.
 Defined.
 
-
-Lemma deg_II_or_right : forall Γ A B, deg_sequent (Γ ⊢? B) < deg_sequent (Γ ⊢? A ∨ B).
-Proof.
-  intros Γ A B.
-  specialize (deg_at_least_two A).
-  specialize (deg_at_least_two B).
-  intros H H0.
-  induction Γ.
-  - simpl. lia.
-  - unfold deg_sequent, deg_context in *. simpl in *.
-    lia.
-Defined.
-
-
-(* On prouvera que les prémisses des règles ont des degrés plus petits
-   que les conclusions. *)
-Lemma deg_IE_and :
-  forall  Γ0 A B Γ1 C,
-  deg_sequent (Γ0 ++ [A; B] ++ Γ1 ⊢? C) < deg_sequent (Γ0 ++ [A ∧ B] ++ Γ1 ⊢? C).
-Proof.
-  intros Γ0 A B  Γ1 C.
-  induction Γ0.
-  - simpl.
-    induction  Γ1.
-    + simpl.
-      apply Nat.add_lt_mono_r.
-      specialize (deg_and_sum A B) as G.
-      simpl in G.
-      unfold deg_context.
-      simpl.
-      lia.
-    + apply Nat.add_lt_mono_r.
-      unfold deg_context.
-      simpl.
-      specialize (deg_and_sum A B) as G.
-      simpl in G.
-      lia.
-  - simpl.
-    simpl in IHΓ0.
-    unfold deg_context.
-    simpl.
-    unfold deg_context in IHΓ0.
-    simpl in IHΓ0.
-    lia.
-Defined.
-
-Lemma deg_II_and_left :  forall  Γ A B,
-    deg_sequent (Γ  ⊢? A) < deg_sequent (Γ ⊢? A ∧ B).
-Proof.
-  intros Γ A B.
-  induction Γ.
-  - simpl. specialize (deg_at_least_two B). specialize (deg_at_least_two A). nia.
-  - unfold deg_sequent, deg_context in *. simpl in *.
-    specialize (deg_at_least_two A).
-    specialize (deg_at_least_two B).
-    specialize (deg_at_least_two a).
-    nia.
-Defined.
-
-Lemma deg_II_and_right :   forall  Γ A B,
-    deg_sequent (Γ  ⊢? B) < deg_sequent (Γ ⊢? A ∧ B).
-Proof.
-  intros Γ A B.
-  induction Γ.
-  - simpl. specialize (deg_at_least_two B). specialize (deg_at_least_two A). nia.
-  - unfold deg_sequent, deg_context in *. simpl in *.
-    specialize (deg_at_least_two A).
-    specialize (deg_at_least_two B).
-    specialize (deg_at_least_two a).
-    nia.
-Defined.
-
-
-Lemma deg_IE_or_left :
-  forall Γ0 A B Γ1 C,
-  deg_sequent (Γ0 ++ [A] ++ Γ1 ⊢? C) < deg_sequent (Γ0 ++ [A ∨ B] ++ Γ1 ⊢? C).
-Proof.
-  intros Γ0 A B Γ1 C.
-  induction  Γ0.
-  + simpl.
-    unfold deg_context.
-    simpl.
-    specialize (deg_or_intro_left A B) as H.
-    simpl in H.
-    lia.
-  + specialize (deg_or_intro_left A B) as H. simpl in H.
-    unfold deg_sequent, deg_context.
-    unfold deg_sequent, deg_context in IHΓ0.
-    simpl.
-    simpl in IHΓ0.
-    lia.
-Defined.
-
-Lemma deg_IE_or_right :
-  forall Γ0 A B Γ1 C,
-  deg_sequent (Γ0 ++ [B] ++ Γ1 ⊢? C) < deg_sequent (Γ0 ++ [A ∨ B] ++ Γ1 ⊢? C).
-Proof.
-  intros Γ0 A B Γ1 C.
-  induction  Γ0.
-  + simpl.
-    unfold deg_context.
-    simpl.
-    specialize (deg_or_intro_left A B) as H.
-    simpl in H.
-    lia.
-  + specialize (deg_or_intro_left A B) as H. simpl in H.
-    unfold deg_sequent, deg_context.
-    unfold deg_sequent, deg_context in IHΓ0.
-    simpl.
-    simpl in IHΓ0.
-    lia.
-Defined.
-
-Lemma deg_II_impl :
-  forall Γ A B,
-  deg_sequent (Γ ++ [A] ⊢? B) < deg_sequent (Γ ⊢? A ⇒ B).
-Proof.
-  intros Γ A B.
-  induction Γ.
-  + simpl. unfold deg_context. simpl.
-    specialize (deg_at_least_two A) as HA.
-    specialize (deg_at_least_two B) as HB.
-    induction (deg A); lia.
-  + specialize (deg_at_least_two A) as HA.
-    specialize (deg_at_least_two B) as HB.
-    unfold deg_sequent,deg_context in IHΓ.
-    simpl in IHΓ.
-    unfold deg_sequent, deg_context.
-    simpl.
-    lia.
-Defined.
 
 Lemma deg_context_app : forall Γ1 Γ2, deg_context (Γ1 ++ Γ2) = deg_context Γ1 + deg_context Γ2.
 Proof.
@@ -382,33 +239,144 @@ Proof.
   lia.
 Defined.
 
+
+Lemma deg_II_or_left : forall Γ A B, deg_sequent (Γ ⊢? A) < deg_sequent (Γ ⊢? A ∨ B).
+Proof.
+  intros Γ A B.
+  deg_two A H.
+  deg_two B H0.
+  specialize (deg_context_geq_O Γ) as H1.
+  simpl.
+  lia.
+Defined.
+
+
+Lemma deg_II_or_right : forall Γ A B, deg_sequent (Γ ⊢? B) < deg_sequent (Γ ⊢? A ∨ B).
+Proof.
+  intros Γ A B.
+  deg_two A H.
+  deg_two B H0.
+  specialize (deg_context_geq_O Γ) as H1.
+  simpl.
+  lia.
+Defined.
+
+
+(* On prouvera que les prémisses des règles ont des degrés plus petits
+   que les conclusions. *)
+Lemma deg_IE_and :
+  forall  Γ0 A B Γ1 C,
+  deg_sequent (Γ0 ++ [A; B] ++ Γ1 ⊢? C) < deg_sequent (Γ0 ++ [A ∧ B] ++ Γ1 ⊢? C).
+Proof.
+  intros Γ0 A B  Γ1 C.
+  deg_two A H.
+  deg_two B H0.
+  deg_two C H1.
+  specialize (deg_context_geq_O
+                Γ0) as H2.
+  specialize (deg_context_geq_O Γ1) as H3.
+  unfold deg_sequent.
+  repeat rewrite deg_context_app.
+  unfold deg_context.
+  simpl.
+  nia.
+Defined.
+
+Lemma deg_II_and_left :  forall  Γ A B,
+    deg_sequent (Γ  ⊢? A) < deg_sequent (Γ ⊢? A ∧ B).
+Proof.
+  
+  intros Γ A B.
+  deg_two A H.
+  deg_two B H0.
+  specialize (deg_context_geq_O
+                Γ) as H1.
+  simpl. nia.
+Defined.
+
+Lemma deg_II_and_right :   forall  Γ A B,
+    deg_sequent (Γ  ⊢? B) < deg_sequent (Γ ⊢? A ∧ B).
+Proof.
+  
+  intros Γ A B.
+  deg_two A H.
+  deg_two B H0.
+  specialize (deg_context_geq_O
+                Γ) as H1.
+  simpl. nia.
+Defined.
+
+
+Lemma deg_IE_or_left :
+  forall Γ0 A B Γ1 C,
+  deg_sequent (Γ0 ++ [A] ++ Γ1 ⊢? C) < deg_sequent (Γ0 ++ [A ∨ B] ++ Γ1 ⊢? C).
+Proof.
+  intros Γ0 A B  Γ1 C.
+  deg_two A H.
+  deg_two B H0.
+  deg_two C H1.
+  specialize (deg_context_geq_O
+                Γ0) as H2.
+  specialize (deg_context_geq_O Γ1) as H3.
+  unfold deg_sequent.
+  repeat rewrite deg_context_app.
+  unfold deg_context.
+  simpl.
+  nia.
+Defined.
+
+Lemma deg_IE_or_right :
+  forall Γ0 A B Γ1 C,
+  deg_sequent (Γ0 ++ [B] ++ Γ1 ⊢? C) < deg_sequent (Γ0 ++ [A ∨ B] ++ Γ1 ⊢? C).
+Proof.
+  intros Γ0 A B  Γ1 C.
+  deg_two A H.
+  deg_two B H0.
+  deg_two C H1.
+  specialize (deg_context_geq_O
+                Γ0) as H2.
+  specialize (deg_context_geq_O Γ1) as H3.
+  unfold deg_sequent.
+  repeat rewrite deg_context_app.
+  unfold deg_context.
+  simpl.
+  nia.
+Defined.
+
+Lemma deg_II_impl :
+  forall Γ A B,
+  deg_sequent (Γ ++ [A] ⊢? B) < deg_sequent (Γ ⊢? A ⇒ B).
+Proof.
+  
+  intros Γ A B.
+  deg_two A H.
+  deg_two B H0.
+  specialize (deg_context_geq_O
+                Γ) as H1.
+  rewrite deg_sequent_app.
+  rewrite deg_context_element.
+  simpl.
+  nia.
+Defined.
+
 Lemma deg_IE_impl_left :
   forall Γ A Γ' B Γ'' C,
   deg_sequent (Γ ++ [A] ++ Γ' ++ [B] ++ Γ'' ⊢? C) <
     deg_sequent (Γ ++ [A] ++ Γ' ++ [A ⇒ B] ++ Γ'' ⊢? C).
 Proof.
   intros Γ A Γ' B Γ'' C.
-  induction Γ'.
-  + simpl.
-    specialize (deg_II_impl Γ A B) as H.
-    induction Γ''.
-  -
-    repeat rewrite deg_sequent_app.
-    simpl.
-    repeat rewrite deg_sequent_app in H.
-    simpl in H.
-    repeat rewrite deg_context_app.
-    repeat rewrite deg_context_cons.
-    simpl.
-    lia.
-  - repeat rewrite deg_sequent_app in *.
-    repeat rewrite deg_context_app in *.
-    simpl in *.
-    unfold deg_context in *. simpl in *.
-    lia.
-    + repeat rewrite deg_sequent_app in *.
-      repeat rewrite deg_context_app in *.
-      unfold deg_context in *. simpl in *. lia.
+  deg_two A H.
+  deg_two B H0.
+  deg_two C H1.
+  specialize (deg_context_geq_O
+                Γ) as H2.
+  specialize (deg_context_geq_O Γ') as H3.
+  specialize (deg_context_geq_O Γ'') as H4.
+  unfold deg_sequent.
+  repeat rewrite deg_context_app.
+  repeat rewrite deg_context_element.
+  simpl.
+  nia.
 Defined.
 
 Lemma deg_IE_impl_right :
@@ -416,28 +384,19 @@ Lemma deg_IE_impl_right :
   deg_sequent (Γ ++ [B] ++ Γ' ++ [A] ++ Γ'' ⊢? C) <
     deg_sequent (Γ ++ [A ⇒ B] ++ Γ' ++ [A] ++ Γ'' ⊢? C).
 Proof.
-    intros Γ A Γ' B Γ'' C.
-  induction Γ'.
-  + simpl.
-    specialize (deg_II_impl Γ A B) as H.
-    induction Γ''.
-  -
-    repeat rewrite deg_sequent_app.
-    simpl.
-    repeat rewrite deg_sequent_app in H.
-    simpl in H.
-    repeat rewrite deg_context_app.
-    repeat rewrite deg_context_cons.
-    simpl.
-    lia.
-  - repeat rewrite deg_sequent_app in *.
-    repeat rewrite deg_context_app in *.
-    simpl in *.
-    unfold deg_context in *. simpl in *.
-    lia.
-    + repeat rewrite deg_sequent_app in *.
-      repeat rewrite deg_context_app in *.
-      unfold deg_context in *. simpl in *. lia.
+  intros Γ A Γ' B Γ'' C.
+  deg_two A H.
+  deg_two B H0.
+  deg_two C H1.
+  specialize (deg_context_geq_O
+                Γ) as H2.
+  specialize (deg_context_geq_O Γ') as H3.
+  specialize (deg_context_geq_O Γ'') as H4.
+  unfold deg_sequent.
+  repeat rewrite deg_context_app.
+  repeat rewrite deg_context_element.
+  simpl.
+  nia.
 Defined.
 
 Lemma deg_IE_impl_top :
@@ -446,13 +405,18 @@ Lemma deg_IE_impl_top :
     deg_sequent (Γ ++ [⊤ ⇒ A] ++ Γ' ⊢? B).
 Proof.
   intros Γ A Γ' B.
-  induction Γ'.
-  + repeat rewrite deg_sequent_app.
-    unfold deg_context. simpl.
-    lia.
-  + repeat rewrite deg_sequent_app in *.
-    unfold deg_context in *. simpl in *.
-    lia.
+  deg_two A H.
+  deg_two B H0.
+  specialize (deg_context_geq_O
+                Γ) as H1.
+  
+  specialize (deg_context_geq_O
+                Γ') as H2.
+  unfold deg_sequent.
+  repeat rewrite deg_context_app.
+  simpl.
+  rewrite deg_context_element.
+  nia.
 Defined.
 
 Lemma deg_IE_impl_and :
@@ -461,29 +425,19 @@ Lemma deg_IE_impl_and :
     deg_sequent (Γ ++ [A ∧ B ⇒ C] ++ Γ' ⊢? D).
 Proof.
   intros Γ A B C Γ' D.
-  induction Γ'.
-  +
-    repeat rewrite deg_sequent_app.
-    unfold deg_context.
-    simpl.
-    Search ((?a * ?b) * ?c).
-    apply Plus.plus_lt_compat_r_stt.
-    apply Plus.plus_lt_compat_l_stt.
-    specialize (deg_at_least_two A) as HA.
-    Search (S ?a < S ?b).
-    apply Arith_prebase.lt_n_S_stt.
-    Search (?a + 0).
-    repeat rewrite Nat.add_0_r.
-    rewrite <- Nat.mul_assoc.
-    Search (?a * ?b < ?a * ?c).
-    apply Mult.mult_lt_compat_l_stt.
-    * simpl.
-      induction C; simpl; try lia.
-    * lia.
-  + repeat rewrite deg_sequent_app in *.
-    unfold deg_context in *.
-    simpl in *.
-    lia.
+  deg_two A H.
+  deg_two B H0.
+  deg_two C H1.
+  deg_two D H2.
+  specialize (deg_context_geq_O
+                Γ) as H3.
+  
+  specialize (deg_context_geq_O
+                Γ') as H4.
+  unfold deg_sequent.
+  repeat rewrite deg_context_app.
+  simpl.
+  nia.
 Defined.
 
 
@@ -492,28 +446,22 @@ Lemma deg_IE_impl_or :
   deg_sequent (Γ ++ [A ⇒ C] ++ [B ⇒ C] ++ Γ' ⊢? D) <
     deg_sequent (Γ ++ [A ∨ B ⇒ C] ++ Γ' ⊢? D).
 Proof.
+  
   intros Γ A B C Γ' D.
-  induction Γ.
-  - simpl.
-    apply Arith_prebase.lt_n_S_stt.
-    Search (_ + ?n < _ + ?n).
-    repeat apply add_lt_mono_r_proj_l2r.
-    Search (S _ + _).
-    rewrite <- plus_Sn_m.
-    Search (((?a + ?b) + ?c)).
-    rewrite Nat.add_assoc.
-    repeat apply add_lt_mono_r_proj_l2r.
-    specialize (deg_at_least_two A) as HA.
-    specialize (deg_at_least_two B) as HB.
-    specialize (deg_at_least_two C) as HC.
-    lia.
-  - repeat rewrite deg_sequent_app in *.
-    repeat rewrite deg_context_app in *.
-    simpl in *.
-    lia.
+  deg_two A H.
+  deg_two B H0.
+  deg_two C H1.
+  deg_two D H2.
+  specialize (deg_context_geq_O
+                Γ) as H3.
+  
+  specialize (deg_context_geq_O
+                Γ') as H4.
+  unfold deg_sequent.
+  repeat rewrite deg_context_app.
+  simpl.
+  nia.
 Defined.
-
-Check deg.
 
 
 
@@ -522,23 +470,23 @@ Lemma deg_IE_impl_impl_left :
   deg_sequent (Γ ++ [A; B ⇒ C] ++ Γ' ⊢? B) <
     deg_sequent (Γ ++ [(A ⇒ B) ⇒ C] ++ Γ' ⊢? D).
 Proof.
-
+  
   intros Γ A B C Γ' D.
-    specialize (deg_at_least_two A) as HA.
-    specialize (deg_at_least_two B) as HB.
-    specialize (deg_at_least_two C) as HC.
-    specialize (deg_at_least_two D) as HD.
-    repeat rewrite deg_sequent_app.
-    repeat rewrite deg_context_app.
-    repeat rewrite <- Nat.add_assoc.
-    apply add_lt_mono_l_proj_l2r.
-    rewrite Nat.add_comm.
-    Check Nat.add_comm.
-    rewrite Nat.add_comm with (n := deg_context [(A ⇒ B) ⇒ C]).
-    repeat rewrite <- Nat.add_assoc.
-    apply add_lt_mono_l_proj_l2r.
-    unfold deg_context. simpl.
-    nia.
+  deg_two A H.
+  deg_two B H0.
+  deg_two C H1.
+  deg_two D H2.
+  specialize (deg_context_geq_O
+                Γ) as H3.
+  
+  specialize (deg_context_geq_O
+                Γ') as H4.
+  unfold deg_sequent.
+  repeat rewrite deg_context_app.
+  rewrite deg_context_cons.
+  repeat rewrite deg_context_element.
+  simpl.
+  nia.
 Defined.
 
 Lemma deg_IE_impl_impl_right :
@@ -546,23 +494,21 @@ Lemma deg_IE_impl_impl_right :
   deg_sequent (Γ ++ [C] ++ Γ' ⊢? D) <
     deg_sequent (Γ ++ [(A ⇒ B) ⇒ C] ++ Γ' ⊢? D).
 Proof.
-
   intros Γ A B C Γ' D.
-    specialize (deg_at_least_two A) as HA.
-    specialize (deg_at_least_two B) as HB.
-    specialize (deg_at_least_two C) as HC.
-    specialize (deg_at_least_two D) as HD.
-    repeat rewrite deg_sequent_app.
-    repeat rewrite deg_context_app.
-    repeat rewrite <- Nat.add_assoc.
-    apply add_lt_mono_l_proj_l2r.
-    rewrite Nat.add_comm.
-    Check Nat.add_comm.
-    rewrite Nat.add_comm with (n := deg_context [(A ⇒ B) ⇒ C]).
-    repeat rewrite <- Nat.add_assoc.
-    apply add_lt_mono_l_proj_l2r.
-    unfold deg_context. simpl.
-    nia.
+  deg_two A H.
+  deg_two B H0.
+  deg_two C H1.
+  deg_two D H2.
+  specialize (deg_context_geq_O
+                Γ) as H3.
+  
+  specialize (deg_context_geq_O
+                Γ') as H4.
+  unfold deg_sequent.
+  repeat rewrite deg_context_app.
+  repeat rewrite deg_context_element.
+  simpl.
+  nia.
 Defined.
 
  Lemma increasing_sequent_degree : forall B Γ A, deg_sequent (Γ ⊢? A) < deg_sequent ((B :: Γ) ⊢? A).
@@ -574,57 +520,6 @@ Defined.
     specialize (deg_at_least_two B).
     lia.
   Defined.
-
-Lemma deg_context_geq_O : forall Γ, deg_context Γ >= 0.
-Proof.
-  unfold deg_context.
-  induction Γ.
-  - lia.
-  - specialize (deg_at_least_two a).
-    intro H. simpl. lia.
-Defined.
-
-Lemma deg_sequent_geq_two : forall Γ A, deg_sequent (Γ ⊢? A) >= 2.
-Proof.
-  intros Γ A.
-  simpl.
-  specialize (deg_context_geq_O Γ).
-  specialize (deg_at_least_two A).
-  intros H H0.
-  lia.
-Defined.
-
-
-
- (*IDEA: implement lemmas from the paper itself*)
-
-  (*notably: most rules of LG are invertible*)
-
-Example from_text :  forall A C D E F, [(A ∨ (D ∧ (E ⇒  (C ∨ D)))) ⇒ D] ⊢ (A ⇒ (D ∧ (E ⇒ (C ∨ D)))) ∨ F.
-Proof.
-  intros A C D E F.
-  apply II_or_left.
-  apply II_impl.
-  specialize (@IE_impl_or [] [A]) as H.
-  apply H.
-  simpl.
-  clear H.
-  apply II_and.
-  - apply @IE_impl_and with (Γ := [A ⇒ D]) (Γ' := [A]).
-    apply @IE_impl_right with (Γ := []).
-    apply @IE_impl_left with (Γ := []) (Γ' := []).
-    simpl.
-    apply @I_ax with (Γ := []) (Γ' := [(E ⇒ C ∨ D) ⇒ D; A]).
-  - apply II_impl.
-    apply II_or_right.
-    apply @IE_impl_and with (Γ := [A ⇒ D]) (Γ' := [A;E]).
-    apply @IE_impl_right with (Γ := []) (Γ'' := [E]).
-    simpl.
-    apply @IE_impl_left with (Γ := []) (Γ' := []) (Γ'' := [A;E] ).
-    simpl.
-    apply @I_ax with (Γ := []).
-Qed.
-
 
 Lemma decidable_and : forall A0, { '(B, C) | A0 = B ∧ C } + { forall B C, A0 <> B ∧ C }.
 Proof.

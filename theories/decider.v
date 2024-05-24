@@ -42,7 +42,6 @@ Section LI_Decidable.
   Lemma is_provable_rec :
     (Γ ⊢ A) + { notT (Γ ⊢ A) }.
   Proof.
-    Search "provable".
     specialize ( provable_with_I_ax S IH) as [G | B_I_Ax]. {finish. }
     specialize ( provable_with_II_top S IH) as [G | B_I_Top]. {finish. }
     specialize ( provable_with_II_and S IH) as [G | B_I_And]. {finish. }
@@ -78,7 +77,6 @@ Section LI_Decidable.
     specialize (B_E_And p).
     specialize (B_E_Or p).
     specialize (B_E_Bot p).
-    destruct S.
     destruct p; assumption.
 Defined.
 
@@ -115,9 +113,7 @@ Proof.
   remember (deg_sequent (Γ ⊢? A)) as n.
   generalize dependent Γ.
   generalize dependent A.
-  
   specialize (strong_induction SI_Prop SI_IH) as IH.
-  unfold SI_Prop in IH.
   intros A Γ Heqn.
   apply IH with n.
   symmetry.
